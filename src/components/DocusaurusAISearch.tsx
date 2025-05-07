@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DocSearchButton, useDocSearchKeyboardEvents } from '@docsearch/react';
-import Head from '@docusaurus/Head';
 import Link from '@docusaurus/Link';
 import { useHistory } from '@docusaurus/router';
 import { isRegexpStringMatch, useSearchLinkCreator } from '@docusaurus/theme-common';
@@ -456,18 +455,21 @@ export function DocusaurusAISearch({
     }
   }, [isOpen, handleAskAI, closeModal, aiConfig]);
   
+  useEffect(() => {
+    if (appId && typeof document !== 'undefined') {
+      const existingLink = document.querySelector(`link[href="https://${appId}-dsn.algolia.net"]`);
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = `https://${appId}-dsn.algolia.net`;
+        link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+      }
+    }
+  }, [appId]);
+  
   return (
     <div className="docusaurus-openai-search">
-      <Head>
-        {appId && (
-          <link
-            rel="preconnect"
-            href={`https://${appId}-dsn.algolia.net`}
-            crossOrigin="anonymous"
-          />
-        )}
-      </Head>
-      
       <DocSearchButton
         onTouchStart={importDocSearchModalIfNeeded}
         onFocus={importDocSearchModalIfNeeded}
