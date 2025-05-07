@@ -37,30 +37,31 @@ module.exports = {
 };
 ```
 
-### 2. Expose the OpenAI API key
+### 2. Expose the OpenAI API key and load CSS
 
-You can use one of the following approaches:
+You need to add two plugins to your configuration:
 
-#### Option A: Using the environment variables plugin (recommended)
+#### Option A: Using the included plugins (recommended)
 
-The package includes a plugin that you can import directly:
+The package includes both plugins that you can import directly:
 
 ```js
 // In your docusaurus.config.js
-const { envPlugin } = require('docusaurus-openai-search');
+const { envPlugin, docusaurusOpenAISearchPlugin } = require('docusaurus-openai-search');
 // Or using ES modules
-// import { envPlugin } from 'docusaurus-openai-search';
+// import { envPlugin, docusaurusOpenAISearchPlugin } from 'docusaurus-openai-search';
 
 module.exports = {
   // ...other config
   plugins: [
     // ...other plugins
     envPlugin,
+    docusaurusOpenAISearchPlugin(), // Loads the CSS on the client side
   ],
 };
 ```
 
-#### Option B: Manually create the environment variables plugin
+#### Option B: Manually create the plugins
 
 Create a file named `docusaurus-env-variables-plugin.js` in your project root:
 
