@@ -1,18 +1,14 @@
-// Export main components
-export { AiEnhancedSearchBar } from './components/AiEnhancedSearchBar';
-export { AISearchModal } from './components/AISearchModal';
+// Import CSS
+import './styles.css';
 
-// Export utility functions
-export {
-  trackAIQuery,
-  fetchDocumentContent,
-  chunkText,
-  rankSearchResultsByRelevance,
-  retrieveDocumentContent,
-  generateFallbackContent,
-} from './utils';
+// Export main component
+export { DocusaurusAISearch } from './components/DocusaurusAISearch';
 
-// Export types
-export type { OpenAISearchOptions, AISearchConfig, DocumentContent } from './types';
-export type { AiEnhancedSearchBarProps } from './components/AiEnhancedSearchBar';
-export type { InternalDocSearchHit } from '@docsearch/react';
+// Export configuration types
+export type { 
+  DocusaurusAISearchProps,
+  DocusaurusAISearchConfig,
+  OpenAIOptions,
+  UIOptions,
+  PromptOptions
+} from './types';

@@ -10,7 +10,7 @@ import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { AISearchModal } from './AISearchModal';
 import { rankSearchResultsByRelevance } from '../utils';
-import { AISearchBarProps } from '../types';
+import { DocusaurusAISearchProps } from '../types';
 import { InternalDocSearchHit } from '@docsearch/react';
 
 import '@docsearch/css';
@@ -198,16 +198,28 @@ function useResultsFooterComponent({ closeModal }: ResultsFooterComponentProps) 
 }
 
 /**
- * AI-enhanced search bar component for Docusaurus
+ * Docusaurus AI Search component - combines search and AI-powered answers
  */
-export function AiEnhancedSearchBar({
-  contextualSearch = false,
-  externalUrlRegex,
-  ...props
-}: AISearchBarProps): JSX.Element {
+export function DocusaurusAISearch({
+  algoliaConfig,
+  aiConfig
+}: DocusaurusAISearchProps): JSX.Element {
+  const { 
+    appId, 
+    apiKey, 
+    indexName,
+    contextualSearch = false,
+    externalUrlRegex,
+    searchParameters,
+    transformItems,
+    searchPagePath,
+    placeholder,
+    translations
+  } = algoliaConfig;
+  
   const navigator = useNavigator({ externalUrlRegex });
-  const searchParameters = useSearchParameters({ contextualSearch, searchParameters: props.searchParameters });
-  const transformItems = useTransformItems({ transformItems: props.transformItems });
+  const computedSearchParameters = useSearchParameters({ contextualSearch, searchParameters });
+  const computedTransformItems = useTransformItems({ transformItems });
   const transformSearchClient = useSearchClient();
   
   const searchContainer = useRef<HTMLDivElement | null>(null);
@@ -249,10 +261,10 @@ export function AiEnhancedSearchBar({
     setShowAIModal(true);
     
     // Track query if analytics function is provided in aiConfig
-    if (props.aiConfig?.onAIQuery) {
-      props.aiConfig.onAIQuery(query, true);
+    if (aiConfig?.onAIQuery) {
+      aiConfig.onAIQuery(query, true);
     }
-  }, [props.aiConfig]);
+  }, [aiConfig]);
   
   const handleInput = useCallback(
     (event: KeyboardEvent) => {
@@ -284,7 +296,7 @@ export function AiEnhancedSearchBar({
   
   // Effect to add AI button to the search modal
   useEffect(() => {
-    if (isOpen && props.aiConfig?.enabled !== false) {
+    if (isOpen && aiConfig?.enabled !== false) {
       const timer = setTimeout(() => {
         const searchInput = document.querySelector('.DocSearch-Input') as HTMLInputElement;
         const searchDropdown = document.querySelector('.DocSearch-Dropdown') as HTMLElement;
@@ -310,8 +322,8 @@ export function AiEnhancedSearchBar({
             aiButton.className = 'ai-search-header';
             
             // Use custom text if provided in config
-            const buttonText = props.aiConfig?.ui?.aiButtonText || `Ask AI about "${query}"`;
-            const buttonAriaLabel = props.aiConfig?.ui?.aiButtonAriaLabel || 'Ask AI about this question';
+            const buttonText = aiConfig?.ui?.aiButtonText || `Ask AI about "${query}"`;
+            const buttonAriaLabel = aiConfig?.ui?.aiButtonAriaLabel || 'Ask AI about this question';
             
             aiButton.innerHTML = `
               <button class="ai-search-button-header" aria-label="${buttonAriaLabel}">
@@ -445,16 +457,16 @@ export function AiEnhancedSearchBar({
       
       return () => clearTimeout(timer);
     }
-  }, [isOpen, handleAskAI, closeModal, props.aiConfig]);
+  }, [isOpen, handleAskAI, closeModal, aiConfig]);
   
   return (
     <>
       <Head>
         {/* This hint allows the browser to preconnect to Algolia */}
-        {props.appId && (
+        {appId && (
           <link
             rel="preconnect"
-            href={`https://${props.appId}-dsn.algolia.net`}
+            href={`https://${appId}-dsn.algolia.net`}
             crossOrigin="anonymous"
           />
         )}
@@ -467,7 +479,7 @@ export function AiEnhancedSearchBar({
         onClick={openModal}
         ref={searchButtonRef}
         translations={
-          props.translations?.button ?? defaultTranslations.button
+          translations?.button ?? defaultTranslations.button
         }
       />
       
@@ -477,23 +489,22 @@ export function AiEnhancedSearchBar({
           initialScrollY={window.scrollY}
           initialQuery={initialQuery}
           navigator={navigator}
-          transformItems={transformItems}
-          // @ts-ignore - Implicit any type for hit and children
-          hitComponent={({ hit, children }) => (
+          transformItems={computedTransformItems}
+          hitComponent={({ hit, children }: { hit: any; children: React.ReactNode }) => (
             <Link to={hit.url}>{children}</Link>
           )}
           transformSearchClient={transformSearchClient}
-          {...(props.searchPagePath && {
+          {...(searchPagePath && {
             resultsFooterComponent,
           })}
-          placeholder={props.placeholder}
-          translations={props.translations?.modal ?? defaultTranslations.modal}
-          searchParameters={searchParameters}
-          indexName={props.indexName!}
-          apiKey={props.apiKey!}
-          appId={props.appId!}
-          // @ts-ignore - Store search state for AI context
-          onStateChange={(state) => {
+          placeholder={placeholder}
+          translations={translations?.modal ?? defaultTranslations.modal}
+          searchParameters={computedSearchParameters}
+          indexName={indexName}
+          apiKey={apiKey}
+          appId={appId}
+          // Store search state for AI context
+          onStateChange={(state: any) => {
             setLastSearchState(state);
           }}
         />,
@@ -505,7 +516,7 @@ export function AiEnhancedSearchBar({
           query={aiQuery}
           searchResults={searchResults}
           onClose={() => setShowAIModal(false)}
-          config={props.aiConfig}
+          config={aiConfig}
         />
       )}
     </>

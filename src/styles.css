@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 8px 0;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--docsearch-hit-border-color, rgba(128, 126, 163, 0.3));
   background: var(--docsearch-container-background, rgba(33, 33, 33, 0.8));
 }
@@ -15,24 +15,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
-  border-radius: 4px;
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 8px;
   border: none;
-  background: var(--ifm-color-primary, #3578e5);
+  background: linear-gradient(135deg, var(--ifm-color-primary, #3578e5), var(--ifm-color-primary-dark, #306cce));
   color: white;
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 1.05rem;
   cursor: pointer;
   text-align: center;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .ai-search-button-header:hover {
-  background: var(--ifm-color-primary-dark, #306cce);
+  background: linear-gradient(135deg, var(--ifm-color-primary-dark, #306cce), var(--ifm-color-primary-darker, #2658a8));
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+}
+
+.ai-search-button-header:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .ai-search-button-header svg {
-  margin-right: 8px;
+  margin-right: 12px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 /* AI Modal Styles */
@@ -42,62 +56,106 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(3px);
+  align-items: center;
+  z-index: 9999;
+  overflow-y: auto;
+  padding: 20px;
 }
 
 .ai-modal-content {
+  background-color: var(--docsearch-modal-background, white);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 800px;
   max-height: 85vh;
-  border-radius: 8px;
-  background: var(--ifm-background-color, #ffffff);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  color: var(--docsearch-text-color, #1c1e21);
 }
 
 .ai-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--ifm-color-emphasis-200, #ebedf0);
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--docsearch-separator-color, #e5e5e5);
 }
 
 .ai-modal-header h3 {
   margin: 0;
-  font-size: 1.5rem;
-  color: var(--ifm-color-content-secondary, #606770);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--docsearch-heading-color, inherit);
 }
 
 .ai-modal-close {
-  background: transparent;
+  background: none;
   border: none;
-  font-size: 1.75rem;
-  line-height: 1;
-  color: var(--ifm-color-emphasis-600, #606770);
   cursor: pointer;
-  padding: 0 8px;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--docsearch-muted-color, #6c6c6d);
+  padding: 5px;
 }
 
 .ai-modal-body {
-  padding: 20px;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-question {
+  padding: 16px 24px;
+  background-color: var(--docsearch-highlight-bg, #f5f6f7);
+  border-bottom: 1px solid var(--docsearch-separator-color, #e5e5e5);
+  font-weight: 500;
+}
+
+.ai-answer {
+  padding: 16px 24px;
   overflow-y: auto;
   flex: 1;
 }
 
-.ai-question {
-  margin-bottom: 20px;
-  padding: 15px;
+.ai-response {
+  line-height: 1.6;
+}
+
+.ai-response-text {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ai-response-text code {
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  background-color: var(--docsearch-hit-active-color, rgba(0, 0, 0, 0.05));
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.ai-response-text pre {
+  background-color: var(--docsearch-container-background, #f6f8fa);
   border-radius: 6px;
-  background: var(--ifm-color-emphasis-100, #f5f6f7);
-  font-size: 1.1rem;
+  overflow-x: auto;
+  padding: 16px;
+  margin: 16px 0;
+  tab-size: 2;
+}
+
+.ai-response-text pre code {
+  background-color: transparent;
+  padding: 0;
+  white-space: pre;
+  font-size: 0.85em;
 }
 
 .ai-loading {
@@ -105,77 +163,95 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 30px 20px;
+  padding: 48px 24px;
   text-align: center;
+  color: var(--docsearch-muted-color, #6c6c6d);
 }
 
 .ai-loading-spinner {
+  display: inline-block;
   width: 40px;
   height: 40px;
-  border: 4px solid var(--ifm-color-emphasis-200, #ebedf0);
-  border-top: 4px solid var(--ifm-color-primary, #3578e5);
+  border: 3px solid rgba(0, 0, 0, 0.1);
   border-radius: 50%;
-  margin-bottom: 20px;
-  animation: spin 1s linear infinite;
+  border-top-color: var(--docsearch-primary-color, #0066cc);
+  animation: ai-spin 1s ease-in-out infinite;
+  margin-bottom: 16px;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-modal-footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--docsearch-separator-color, #e5e5e5);
+  color: var(--docsearch-muted-color, #6c6c6d);
+  font-size: 0.85rem;
+  text-align: center;
 }
 
 .ai-error {
-  padding: 20px;
-  border-radius: 6px;
-  background: rgba(235, 87, 87, 0.1);
-  color: var(--ifm-color-danger, #dc3545);
-  margin-bottom: 20px;
+  padding: 24px;
+  text-align: center;
+  color: var(--docsearch-text-color, #1c1e21);
 }
 
-.ai-error .error-message {
-  margin-bottom: 15px;
-  font-weight: 500;
+.error-message {
+  margin-bottom: 16px;
+  padding: 16px;
+  background-color: rgba(255, 0, 0, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 0, 0, 0.1);
+  color: var(--docsearch-error-color, #c41e3a);
 }
 
 .ai-error-actions {
-  display: flex;
-  margin-top: 20px;
+  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 .ai-retry-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 8px 12px;
+  gap: 8px;
+  background-color: var(--docsearch-primary-color, #0066cc);
+  color: white;
+  border: none;
   border-radius: 4px;
-  border: 1px solid var(--ifm-color-danger, #dc3545);
-  background: transparent;
-  color: var(--ifm-color-danger, #dc3545);
-  font-weight: 500;
+  padding: 8px 16px;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s;
 }
 
 .ai-retry-button:hover {
-  background: var(--ifm-color-danger, #dc3545);
-  color: white;
-}
-
-.ai-retry-button svg {
-  margin-right: 8px;
+  background-color: var(--docsearch-primary-hover-color, #0052a3);
 }
 
 .ai-search-links {
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid var(--ifm-color-emphasis-200, #ebedf0);
+  margin-top: 24px;
+  text-align: left;
+}
+
+.ai-search-links p {
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .ai-search-links ul {
-  padding-left: 20px;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.ai-search-links li {
+  margin-bottom: 8px;
 }
 
 .ai-search-links a {
-  color: var(--ifm-color-primary, #3578e5);
+  color: var(--docsearch-primary-color, #0066cc);
   text-decoration: none;
 }
 
@@ -183,84 +259,21 @@
   text-decoration: underline;
 }
 
-.ai-answer {
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.ai-response {
-  margin-top: 10px;
-}
-
-.ai-response-text.markdown {
-  overflow-wrap: break-word;
-}
-
-.ai-response-text.markdown p {
-  margin-bottom: 1rem;
-}
-
-.ai-response-text.markdown h2,
-.ai-response-text.markdown h3,
-.ai-response-text.markdown h4 {
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.ai-response-text.markdown code {
-  background: var(--ifm-code-background, #f6f7f8);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.9em;
-}
-
-.ai-response-text.markdown pre {
-  background: var(--ifm-code-background, #f6f7f8);
-  border-radius: 6px;
-  padding: 16px;
-  overflow-x: auto;
-  margin: 16px 0;
-}
-
-.ai-response-text.markdown pre code {
-  background: transparent;
-  padding: 0;
-  margin: 0;
-}
-
-.ai-response-text.markdown ul,
-.ai-response-text.markdown ol {
-  padding-left: 24px;
-  margin-bottom: 1rem;
-}
-
-.ai-response-text.markdown blockquote {
-  border-left: 4px solid var(--ifm-color-emphasis-300, #dadde1);
-  padding-left: 16px;
-  margin-left: 0;
-  margin-right: 0;
-  color: var(--ifm-color-emphasis-700, #606770);
-}
-
 .ai-notice {
-  margin-top: 30px;
+  margin-top: 24px;
   padding: 16px;
-  background: var(--ifm-color-info-contrast-background, rgba(84, 199, 236, 0.1));
-  border-left: 4px solid var(--ifm-color-info, #54c7ec);
+  background-color: rgba(255, 170, 0, 0.08);
+  border-left: 4px solid rgba(255, 170, 0, 0.5);
   border-radius: 4px;
 }
 
 .ai-notice p {
+  margin-top: 0;
   margin-bottom: 8px;
 }
 
-.ai-modal-footer {
-  padding: 12px 20px;
-  border-top: 1px solid var(--ifm-color-emphasis-200, #ebedf0);
-  font-size: 0.85rem;
-  color: var(--ifm-color-content-secondary, #606770);
-  text-align: center;
+.ai-notice ul {
+  margin-bottom: 0;
 }
 
 /* Search footer styling */
@@ -285,13 +298,54 @@
   text-decoration: underline;
 }
 
+/* Docusearch overrides to fix z-index issues */
+.DocSearch-Container {
+  z-index: 9000 !important;
+}
+
+.DocSearch-Modal {
+  z-index: 9001 !important;
+}
+
+.DocSearch-SearchBar {
+  z-index: 9002 !important;
+}
+
+.DocSearch-Dropdown {
+  z-index: 9001 !important;
+}
+
+.DocSearch-Hit-source {
+  z-index: 100 !important;
+}
+
+/* Make sure our search button also has a high z-index */
+.DocSearch-Button {
+  z-index: 200 !important;
+  position: relative;
+}
+
+/* Dark theme tweaks */
+:root[data-theme='dark'] .ai-response-text pre {
+  background-color: var(--docsearch-container-background, #1c1e21);
+}
+
+:root[data-theme='dark'] .ai-notice {
+  background-color: rgba(255, 170, 0, 0.1);
+}
+
+:root[data-theme='dark'] .error-message {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-color: rgba(255, 0, 0, 0.2);
+}
+
 /* Dark mode adjustments */
 html[data-theme='dark'] .ai-search-button-header {
-  background: var(--ifm-color-primary, #4e89e8);
+  background: linear-gradient(135deg, var(--ifm-color-primary, #4e89e8), var(--ifm-color-primary-dark, #3a70c8));
 }
 
 html[data-theme='dark'] .ai-search-button-header:hover {
-  background: var(--ifm-color-primary-dark, #3a70c8);
+  background: linear-gradient(135deg, var(--ifm-color-primary-dark, #3a70c8), var(--ifm-color-primary-darker, #2a5ca8));
 }
 
 html[data-theme='dark'] .ai-question {
@@ -308,9 +362,17 @@ html[data-theme='dark'] .ai-notice {
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
+  /* AI Modal */
   .ai-modal-content {
-    max-width: 95%;
-    max-height: 90vh;
+    width: 100%;
+    max-width: none;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+  
+  .ai-modal-overlay {
+    padding: 0;
   }
   
   .ai-modal-header h3 {
@@ -318,51 +380,98 @@ html[data-theme='dark'] .ai-notice {
   }
   
   .ai-modal-body {
-    padding: 16px;
+    padding: 0;
   }
   
   .ai-question {
     padding: 12px;
     font-size: 1rem;
   }
+  
+  /* AI Search Button */
+  .ai-search-header {
+    padding: 12px 16px;
+  }
+  
+  .ai-search-button-header {
+    padding: 14px 20px;
+    font-size: 1rem;
+  }
 }
 
 /* Markdown rendering styles */
 .markdown h1 {
-  font-size: 1.8em;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  font-size: 1.8rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .markdown h2 {
-  font-size: 1.5em;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .markdown h3 {
-  font-size: 1.3em;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  font-size: 1.25rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown h4 {
+  font-size: 1.1rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .markdown p {
-  margin: 0.8em 0;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .markdown ul, .markdown ol {
-  padding-left: 20px;
-  margin: 0.8em 0;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .markdown li {
-  margin: 0.3em 0;
+  margin-bottom: 0.25rem;
 }
 
-.markdown pre {
-  padding: 16px;
-  overflow: auto;
-  border-radius: 6px;
-  background-color: #f6f8fa;
-  margin: 1em 0;
+.markdown blockquote {
+  border-left: 4px solid var(--docsearch-highlight-color, #5468ff);
+  padding-left: 1rem;
+  margin-left: 0;
+  color: var(--docsearch-muted-color, #6c6c6d);
+}
+
+.markdown a {
+  color: var(--docsearch-primary-color, #0066cc);
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown th, .markdown td {
+  border: 1px solid var(--docsearch-separator-color, #e5e5e5);
+  padding: 0.5rem;
+}
+
+.markdown th {
+  background-color: var(--docsearch-highlight-bg, #f5f6f7);
+  font-weight: 600;
 } 

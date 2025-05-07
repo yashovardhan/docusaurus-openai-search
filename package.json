@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -9,7 +9,8 @@
         "static"
     ],
     "scripts": {
-        "build": "tsc",
+        "build": "tsc && npm run copy-css",
+        "copy-css": "cp src/styles.css dist/",
         "prepare": "npm run build",
         "lint": "eslint src --ext .ts,.tsx"
     },
@@ -24,7 +25,7 @@
         "search",
         "openai"
     ],
-    "author": "Your Name",
+    "author": "Yashovardhan Agrawal",
     "license": "MIT",
     "peerDependencies": {
         "@docusaurus/core": ">=2.0.0",

@@ -1,28 +1,50 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { OpenAI } from 'openai';
 import { marked } from 'marked';
-import { InternalDocSearchHit } from '@docsearch/react';
-import { retrieveDocumentContent, trackAIQuery } from '../utils';
+import { OpenAI } from 'openai';
+import { AISearchModalProps } from '../types';
+import {
+  trackAIQuery,
+  retrieveDocumentContent,
+  generateFallbackContent,
+  createSystemPrompt,
+  createUserPrompt
+} from '../utils';
 import '../styles.css';
 
-interface AISearchModalProps {
-  query: string;
-  onClose: () => void;
-  searchResults: InternalDocSearchHit[];
-}
-
-export function AISearchModal({ query, onClose, searchResults }: AISearchModalProps): JSX.Element {
-  const [loading, setLoading] = useState(true);
+/**
+ * Modal component that displays AI-generated answers to search queries
+ */
+export function AISearchModal({
+  query,
+  onClose,
+  searchResults,
+  config
+}: AISearchModalProps): JSX.Element {
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
-  const [formattedAnswer, setFormattedAnswer] = useState('');
-  const [retrievalStatus, setRetrievalStatus] = useState('Retrieving document content...');
-  const [fetchFailed, setFetchFailed] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [documentCount, setDocumentCount] = useState(0);
+  const [formattedAnswer, setFormattedAnswer] = useState<string>('');
+  const [retrievedContent, setRetrievedContent] = useState<string[]>([]);
+  const [retrievalStatus, setRetrievalStatus] = useState<string>(
+    config?.ui?.retrievingText || 'Retrieving document content...'
+  );
+  const [fetchFailed, setFetchFailed] = useState<boolean>(false);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
-  // Get the API key from window global variable (set in docusaurus.config.js)
-  const apiKey = typeof window !== 'undefined' ? window.OPENAI_API_KEY || '' : '';
+  // Get the API key from config or window global variable
+  const apiKey = config?.openAI?.apiKey || (typeof window !== 'undefined' ? window.OPENAI_API_KEY : '');
+
+  // Default modal text overrides
+  const modalTexts = {
+    modalTitle: 'AI Answer',
+    loadingText: 'Generating answer based on documentation...',
+    errorText: 'Unable to generate an answer. Please try again later.',
+    retryButtonText: 'Retry Query',
+    footerText: 'Powered by AI • Using content from documentation',
+    retrievingText: 'Retrieving document content...',
+    generatingText: 'Generating AI response...',
+    ...config?.ui
+  };
 
   // Function to handle retrying the query
   const handleRetry = useCallback(() => {
@@ -31,136 +53,166 @@ export function AISearchModal({ query, onClose, searchResults }: AISearchModalPr
     setLoading(true);
     setRetrievalStatus('Retrying...');
 
-    // Small delay to ensure UI updates before retrying
+    // Set a small delay to ensure UI updates before retrying
     setTimeout(() => {
       setIsRetrying(false);
+      // The useEffects will handle the retry
     }, 100);
   }, []);
 
-  // Fetch document content and generate answer using OpenAI
+  // First, retrieve document content
   useEffect(() => {
-    if (!query || isRetrying === null) return;
+    async function fetchContent() {
+      if (!query) {
+        setLoading(false);
+        return;
+      }
 
-    let isMounted = true;
-    
-    const generateAnswer = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        setRetrievalStatus('Retrieving document content...');
+        setRetrievalStatus(modalTexts.retrievingText);
         setFetchFailed(false);
 
         if (searchResults.length === 0) {
           throw new Error('No search results available to retrieve content from');
         }
 
-        // Retrieve content from documents
         const contents = await retrieveDocumentContent(searchResults, query);
+
+        if (contents.length === 0) {
+          console.warn('Could not retrieve document content, using fallback mechanism');
+          // Use fallback mechanism to at least provide some information
+          const fallbackContents = generateFallbackContent(searchResults, query);
+
+          if (fallbackContents.length > 0) {
+            setRetrievedContent(fallbackContents);
+            setRetrievalStatus(
+              `Using search results as content (${fallbackContents.length} results)`
+            );
+            setFetchFailed(true);
+          } else {
+            throw new Error('Could not retrieve or generate any content for this search');
+          }
+        } else {
+          setRetrievedContent(contents);
+          setRetrievalStatus(`Retrieved content from ${contents.length} documents`);
+        }
+      } catch (err: any) {
+        console.error('Error retrieving document content:', err);
+        setRetrievalStatus('Failed to retrieve document content');
+        setError(
+          `Unable to retrieve documentation content: ${err.message || 'Unknown error'}. Please try a different search query.`
+        );
+        setLoading(false);
+      }
+    }
+
+    fetchContent();
+  }, [query, searchResults, isRetrying, modalTexts.retrievingText]);
+
+  // Then, generate answer based on retrieved content
+  useEffect(() => {
+    async function fetchAnswer() {
+      if (!query) {
+        setLoading(false);
+        return;
+      }
+
+      // If no content was retrieved, we've already set the error in the first useEffect
+      if (retrievedContent.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        setRetrievalStatus(modalTexts.generatingText);
+
+        // Create system and user prompts using config options
+        const systemPrompt = createSystemPrompt({
+          systemPrompt: config?.prompts?.systemPrompt,
+          siteName: config?.prompts?.siteName
+        });
         
-        if (isMounted) {
-          if (contents.length === 0) {
-            throw new Error('Could not retrieve document content');
+        const userPrompt = createUserPrompt(
+          query, 
+          retrievedContent, 
+          searchResults, 
+          {
+            userPrompt: config?.prompts?.userPrompt,
+            maxDocuments: config?.prompts?.maxDocuments,
+            highlightCode: config?.prompts?.highlightCode
           }
-          
-          setDocumentCount(contents.length);
-          setRetrievalStatus(`Generating AI response from ${contents.length} documents...`);
-          
-          // Prepare content for OpenAI request
-          const contextContent = contents
-            .map((doc, index) => {
-              return `--- START OF DOCUMENT: ${doc.title} ---\n${doc.content}\n--- END OF DOCUMENT ---\n`;
-            })
-            .join('\n\n');
+        );
 
-          // Format search results for reference
-          const formattedResults = searchResults
-            .slice(0, 3)
-            .map((result, index) => {
-              const title = result.hierarchy?.lvl0 || 'Document';
-              const subtitle = result.hierarchy?.lvl1 || '';
-              return `Source ${index + 1}: ${title} > ${subtitle}: ${result.url}`;
-            })
-            .join('\n');
-
-          if (!apiKey) {
-            throw new Error('OpenAI API key is not configured. Please check your configuration in docusaurus.config.js.');
-          }
-
+        if (apiKey) {
           // Create OpenAI client on demand
           const openai = new OpenAI({
-            apiKey,
+            apiKey: apiKey,
             dangerouslyAllowBrowser: true,
           });
 
-          // Create enhanced prompt with documentation content
-          const systemPrompt = `You are a helpful assistant providing information from documentation. Your goal is to provide detailed, accurate information based on the provided documentation snippets.
-
-RESPONSE GUIDELINES:
-1. Base your answers primarily on the provided documentation snippets.
-2. Include code examples from the documentation when available.
-3. When documentation contains related but not exact information, use reasonable inference.
-4. If you can't provide an answer, suggest relevant concepts or documentation sections.
-5. Keep your explanation concise but thorough.`;
-
-          const userPrompt = `The user's question is: "${query}"
-
-Here's content from the most relevant documentation sections:
-
-${contextContent}
-
-Source references:
-${formattedResults}
-
-Based on the above documentation, provide the most helpful answer you can to the user's question. Include all relevant code examples from the documentation.`;
-
           const response = await openai.chat.completions.create({
-            model: 'gpt-4.1',
+            model: config?.openAI?.model || 'gpt-4.1',
             messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
+              {
+                role: 'system',
+                content: systemPrompt,
+              },
+              {
+                role: 'user',
+                content: userPrompt,
+              },
             ],
-            max_tokens: 2000,
-            temperature: 0.5, // Lower temperature for more factual responses
+            max_tokens: config?.openAI?.maxTokens || 2000,
+            temperature: config?.openAI?.temperature || 0.5, // Lower temperature for more factual responses
           });
 
-          if (isMounted) {
-            const generatedAnswer = response.choices[0]?.message?.content;
-            setAnswer(generatedAnswer || 'Sorry, I couldn\'t find relevant information in the documentation to answer your question.');
+          const generatedAnswer = response.choices[0]?.message?.content;
+          setAnswer(
+            generatedAnswer ||
+              "Sorry, I couldn't find relevant information in our documentation to answer your question."
+          );
+          
+          // Track successful AI query if function is provided
+          if (config?.onAIQuery) {
+            config.onAIQuery(query, true);
+          } else {
             trackAIQuery(query, true);
           }
+        } else {
+          setError('OpenAI API key is not configured. Please check your configuration.');
         }
       } catch (err: any) {
-        if (isMounted) {
-          setError(err?.message || 'Failed to generate an answer. Please try again later.');
-          setFetchFailed(true);
+        setError(err?.message || 'Failed to generate an answer. Please try again later.');
+        
+        // Track failed AI query if function is provided
+        if (config?.onAIQuery) {
+          config.onAIQuery(query, false);
+        } else {
           trackAIQuery(query, false);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-          setRetrievalStatus('');
-        }
+        setLoading(false);
+        setRetrievalStatus('');
       }
-    };
+    }
 
-    generateAnswer();
+    fetchAnswer();
+  }, [query, retrievedContent, searchResults, apiKey, isRetrying, config, modalTexts.generatingText]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [query, searchResults, apiKey, isRetrying]);
-
-  // Format markdown to HTML
+  // Effect to format markdown to HTML
   useEffect(() => {
     if (answer) {
-      let htmlContent = marked.parse(answer);
+      let htmlContent = marked.parse(answer) as string;
 
       // Add a note about direct links if content fetching failed
       if (fetchFailed && searchResults.length > 0) {
         const linksList = searchResults
           .slice(0, 3)
           .map((result, idx) => {
-            const title = result.hierarchy?.lvl0 || result.hierarchy?.lvl1 || `Document ${idx + 1}`;
+            const title =
+              result.hierarchy?.lvl0 || result.hierarchy?.lvl1 || 'Document ' + (idx + 1);
             return `<li><a href="${result.url}" target="_blank">${title}</a></li>`;
           })
           .join('');
@@ -191,7 +243,7 @@ Based on the above documentation, provide the most helpful answer you can to the
     >
       <div className="ai-modal-content">
         <div className="ai-modal-header">
-          <h3>AI Answer</h3>
+          <h3>{modalTexts.modalTitle}</h3>
           <button className="ai-modal-close" onClick={onClose}>
             &times;
           </button>
@@ -205,7 +257,7 @@ Based on the above documentation, provide the most helpful answer you can to the
           {loading ? (
             <div className="ai-loading">
               <div className="ai-loading-spinner"></div>
-              <div>{retrievalStatus || 'Generating answer based on documentation...'}</div>
+              <div>{retrievalStatus || modalTexts.loadingText}</div>
             </div>
           ) : error ? (
             <div className="ai-error">
@@ -229,7 +281,7 @@ Based on the above documentation, provide the most helpful answer you can to the
                     <path d="M3 22v-6h6"></path>
                     <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
                   </svg>
-                  Retry Query
+                  {modalTexts.retryButtonText}
                 </button>
               </div>
 
@@ -240,7 +292,9 @@ Based on the above documentation, provide the most helpful answer you can to the
                     {searchResults.slice(0, 3).map((result, idx) => (
                       <li key={idx}>
                         <a href={result.url} target="_blank" rel="noopener noreferrer">
-                          {result.hierarchy?.lvl0 || result.hierarchy?.lvl1 || `Result ${idx + 1}`}
+                          {result.hierarchy?.lvl0 ||
+                            result.hierarchy?.lvl1 ||
+                            'Result ' + (idx + 1)}
                         </a>
                       </li>
                     ))}
@@ -251,14 +305,16 @@ Based on the above documentation, provide the most helpful answer you can to the
           ) : (
             <div className="ai-answer">
               <div className="ai-response">
-                <div className="ai-response-text markdown" dangerouslySetInnerHTML={{ __html: formattedAnswer }} />
+                <div className="ai-response-text markdown">
+                  <div dangerouslySetInnerHTML={{ __html: formattedAnswer }} />
+                </div>
               </div>
             </div>
           )}
         </div>
 
         <div className="ai-modal-footer">
-          Powered by AI • Using content from {documentCount} documentation pages
+          {modalTexts.footerText} • Using content from {retrievedContent.length} documentation pages
           {fetchFailed ? ' (search results only)' : ''}
         </div>
       </div>

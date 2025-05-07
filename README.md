@@ -1,14 +1,14 @@
 # Docusaurus OpenAI Search
 
-An AI-enhanced search component for Docusaurus that uses OpenAI to provide intelligent answers from your documentation.
+AI-enhanced search component for Docusaurus using OpenAI's API to provide AI-powered answers based on your documentation content.
 
 ## Features
 
-- 🔍 Integrates seamlessly with Docusaurus's existing Algolia search
-- 🤖 AI-powered answers based on your documentation content
-- 🔗 References to relevant documentation pages
-- 🎨 Customizable UI that matches Docusaurus themes (light/dark)
-- 📱 Fully responsive design
+- Drop-in replacement for Docusaurus's default Algolia DocSearch
+- AI-powered answer generation based on search results
+- Extracts content from documentation pages for contextual answers
+- Customizable prompts, models, and UI
+- Full TypeScript support
 
 ## Installation
 
@@ -16,123 +16,199 @@ An AI-enhanced search component for Docusaurus that uses OpenAI to provide intel
 npm install docusaurus-openai-search
 ```
 
-## Configuration
+## Setup
 
-1. Add your OpenAI API key to your `docusaurus.config.js`:
+### 1. Configure your Docusaurus config
+
+Add your OpenAI API key to your `docusaurus.config.js` file:
 
 ```js
 module.exports = {
-  // ... other Docusaurus config
+  // ...other config
   customFields: {
-    // This will be available globally as window.OPENAI_API_KEY
+    // Optional: Make available to browser
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   },
   scripts: [
-    // Make the API key available to the client
+    // Make API key available to the client
     {
       src: '/docusaurus-openai-search.js',
       async: true,
     },
   ],
+  // ...rest of your configuration
 };
 ```
 
-2. Create a file called `static/docusaurus-openai-search.js` with the following content:
+### 2. Create a script to expose the OpenAI API key
+
+Create a file at `static/docusaurus-openai-search.js`:
 
 ```js
-// This script makes the API key available to the client
-window.OPENAI_API_KEY = '${OPENAI_API_KEY}';
+// This makes the API key available to the client-side code
+window.OPENAI_API_KEY = '%OPENAI_API_KEY%';
 ```
 
-3. Configure your theme to use the AI-enhanced search in your `src/theme/SearchBar/index.js`:
+### 3. Add the swizzled theme component
+
+Create a file at `src/theme/SearchBar/index.js`:
 
 ```jsx
 import React from 'react';
-import { AiEnhancedSearchBar } from 'docusaurus-openai-search';
+import { DocusaurusAISearch } from 'docusaurus-openai-search';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
-export default function SearchBarWrapper() {
-  const {
+export default function SearchBar() {
+  const { 
     siteConfig: { 
-      themeConfig: {
-        algolia: algoliaConfig, 
-        navbar: { search = {} } = {}
-      } = {}
-    } = {}
+      themeConfig: { algolia },
+      customFields,
+    },
   } = useDocusaurusContext();
-  
-  // Return null if no Algolia config or search is explicitly disabled
-  if (!algoliaConfig || search.algoliaConfig === false) {
-    return null;
-  }
 
-  return (
-    <AiEnhancedSearchBar
-      {...algoliaConfig}
-      contextualSearch={algoliaConfig.contextualSearch ?? false}
-      searchPagePath={algoliaConfig.searchPagePath}
-    />
-  );
+  // AI search configuration
+  const aiConfig = {
+    // OpenAI API settings
+    openAI: {
+      apiKey: customFields.OPENAI_API_KEY,
+      model: 'gpt-4.1',
+      maxTokens: 2000,
+      temperature: 0.5,
+    },
+    // UI customization
+    ui: {
+      aiButtonText: 'Ask AI about this',
+      modalTitle: 'AI Answer',
+      footerText: 'Powered by Your Site Name AI',
+    },
+    // Prompt customization
+    prompts: {
+      siteName: 'Your Site Name',
+      // Optional: custom system prompt
+      // systemPrompt: 'Your custom system prompt',
+      // Optional: custom user prompt template
+      // userPrompt: 'Your custom user prompt with {query}, {context}, and {sources} variables',
+    },
+  };
+
+  return <DocusaurusAISearch 
+    algoliaConfig={algolia} 
+    aiConfig={aiConfig} 
+  />;
 }
 ```
 
-## Usage
+## Configuration Options
 
-Once installed and configured, users can:
+The `DocusaurusAISearch` component accepts two props:
 
-1. Use the regular Algolia search functionality by clicking the search button
-2. When viewing search results, they'll see an "Ask AI" button for queries
-3. Clicking the AI button opens a modal that generates an answer using your documentation content
+### `algoliaConfig` (required)
 
-## Customization
+This contains the Algolia DocSearch configuration from your Docusaurus config:
 
-You can customize the appearance by modifying the provided CSS variables in your custom CSS:
-
-```css
-:root {
-  --ai-search-button-bg: var(--ifm-color-primary);
-  --ai-search-button-hover-bg: var(--ifm-color-primary-dark);
-  --ai-modal-header-color: var(--ifm-color-content-secondary);
-  --ai-error-color: var(--ifm-color-danger);
+```typescript
+interface AlgoliaConfig {
+  appId: string;
+  apiKey: string;
+  indexName: string;
+  contextualSearch?: boolean;
+  searchPagePath?: string | boolean;
+  externalUrlRegex?: string;
+  searchParameters?: Record<string, any>;
+  transformItems?: (items: any[]) => any[];
+  placeholder?: string;
+  translations?: {
+    button?: {
+      buttonText?: string;
+      buttonAriaLabel?: string;
+    };
+    modal?: Record<string, any>;
+  };
 }
 ```
 
-## Advanced Options
+### `aiConfig` (optional)
 
-You can pass additional options to the `AiEnhancedSearchBar` component:
+This controls the AI-powered search features:
 
-```jsx
-<AiEnhancedSearchBar
-  // Algolia config
-  appId="YOUR_APP_ID"
-  apiKey="YOUR_SEARCH_API_KEY" 
-  indexName="YOUR_INDEX_NAME"
+```typescript
+interface DocusaurusAISearchConfig {
+  // OpenAI API settings
+  openAI?: {
+    apiKey?: string;
+    model?: string;
+    maxTokens?: number;
+    temperature?: number;
+  };
   
-  // OpenAI config (optional)
-  model="gpt-4" // Default model to use
-  maxTokens={2000} // Maximum tokens to use
-  temperature={0.5} // Temperature for responses
+  // UI text and appearance
+  ui?: {
+    aiButtonText?: string;
+    aiButtonAriaLabel?: string;
+    modalTitle?: string;
+    loadingText?: string;
+    errorText?: string;
+    retryButtonText?: string;
+    footerText?: string;
+    retrievingText?: string;
+    generatingText?: string;
+  };
   
-  // UI customization (optional)
-  textOverrides={{
-    aiButtonText: "Get AI Answer",
-    modalTitle: "AI Documentation Assistant",
-    loadingText: "Analyzing documentation...",
-    errorText: "Sorry, I couldn't find an answer.",
-    retryButtonText: "Try Again",
-    footerText: "Powered by OpenAI"
-  }}
-/>
+  // Prompt handling
+  prompts?: {
+    systemPrompt?: string;
+    userPrompt?: string;
+    siteName?: string;
+    maxDocuments?: number;
+    highlightCode?: boolean;
+  };
+  
+  // General settings
+  enabled?: boolean;
+  onAIQuery?: (query: string, success: boolean) => void;
+}
+```
+
+## Customizing Prompts
+
+You can fully customize the system and user prompts:
+
+```js
+prompts: {
+  // Site name used in default prompts
+  siteName: 'Your Product',
+  
+  // Custom system prompt (instruction to the AI)
+  systemPrompt: `You are a helpful assistant for the Product documentation. 
+  Provide concise, accurate answers based on the documentation content.`,
+  
+  // Custom user prompt with variables that will be replaced:
+  // {query} - the user's search query
+  // {context} - the extracted documentation content
+  // {sources} - references to the source documentation
+  userPrompt: `Answer this question: {query}
+  
+  Here's relevant documentation:
+  {context}
+  
+  Sources:
+  {sources}
+  
+  Keep your answer under 300 words and include code examples when available.`,
+  
+  // Maximum number of documents to include in the context
+  maxDocuments: 3,
+  
+  // Whether to highlight code blocks separately in the context
+  highlightCode: true
+}
 ```
 
 ## Security Considerations
 
-⚠️ **Important**: Never expose your OpenAI API key directly in client-side code. Use environment variables and server-side protection.
-
-For production, consider:
-1. Using a proxy API endpoint to hide your OpenAI key
-2. Setting rate limits
-3. Adding user authentication for API access
+- Never expose your OpenAI API key directly in client-side code without rate limiting
+- Consider implementing a server-side proxy for OpenAI requests
+- Set usage limits on your OpenAI API key
 
 ## License
 
