@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "0.15.0",
+    "version": "1.0.0",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/yashovardhanagrawal/docusaurus-openai-search.git"
+        "url": "git+https://github.com/yashovardhanagrawal/docusaurus-openai-search.git"
     },
     "keywords": [
         "docusaurus",
