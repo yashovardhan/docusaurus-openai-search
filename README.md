@@ -1,6 +1,14 @@
-# Docusaurus AI Search
+# Docusaurus OpenAI Search
 
-An AI-enhanced search component for Docusaurus using OpenAI. This package enhances the standard Algolia search functionality in Docusaurus with an AI assistant that can provide detailed answers to user queries based on your documentation content.
+An AI-enhanced search component for Docusaurus that uses OpenAI to provide intelligent answers from your documentation.
+
+## Features
+
+- 🔍 Integrates seamlessly with Docusaurus's existing Algolia search
+- 🤖 AI-powered answers based on your documentation content
+- 🔗 References to relevant documentation pages
+- 🎨 Customizable UI that matches Docusaurus themes (light/dark)
+- 📱 Fully responsive design
 
 ## Installation
 
@@ -10,95 +18,121 @@ npm install docusaurus-openai-search
 
 ## Configuration
 
-### 1. Register the plugin for CSS loading
-
-First, update your `docusaurus.config.js` to use the plugin which will load the required CSS files:
+1. Add your OpenAI API key to your `docusaurus.config.js`:
 
 ```js
-// docusaurus.config.js
-const { docusaurusOpenAISearchPlugin } = require('docusaurus-openai-search');
-
 module.exports = {
-  // ... other config
-  plugins: [
-    docusaurusOpenAISearchPlugin,
-    // ... your other plugins
-  ],
+  // ... other Docusaurus config
+  customFields: {
+    // This will be available globally as window.OPENAI_API_KEY
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  },
   scripts: [
-    // Add this script to make your OpenAI API key available
+    // Make the API key available to the client
     {
-      src: '/scripts/ai-search-config.js',
+      src: '/docusaurus-openai-search.js',
       async: true,
     },
   ],
-  // ... other config
 };
 ```
 
-### 2. Configure OpenAI API key
-
-Create a file at `static/scripts/ai-search-config.js` with your OpenAI API key:
+2. Create a file called `static/docusaurus-openai-search.js` with the following content:
 
 ```js
-// Make sure to secure this in production!
-window.OPENAI_API_KEY = 'your-openai-api-key';
+// This script makes the API key available to the client
+window.OPENAI_API_KEY = '${OPENAI_API_KEY}';
 ```
 
-### 3. Create a custom theme component
+3. Configure your theme to use the AI-enhanced search in your `src/theme/SearchBar/index.js`:
 
-Create a file at `src/theme/SearchBar/index.js`:
-
-```js
+```jsx
 import React from 'react';
 import { AiEnhancedSearchBar } from 'docusaurus-openai-search';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
-export default function SearchBar(props) {
-  return <AiEnhancedSearchBar {...props} />;
+export default function SearchBarWrapper() {
+  const {
+    siteConfig: { 
+      themeConfig: {
+        algolia: algoliaConfig, 
+        navbar: { search = {} } = {}
+      } = {}
+    } = {}
+  } = useDocusaurusContext();
+  
+  // Return null if no Algolia config or search is explicitly disabled
+  if (!algoliaConfig || search.algoliaConfig === false) {
+    return null;
+  }
+
+  return (
+    <AiEnhancedSearchBar
+      {...algoliaConfig}
+      contextualSearch={algoliaConfig.contextualSearch ?? false}
+      searchPagePath={algoliaConfig.searchPagePath}
+    />
+  );
 }
 ```
 
 ## Usage
 
-Once configured, your Docusaurus site will use the AI-enhanced search bar. Users can:
+Once installed and configured, users can:
 
-1. Use the standard Algolia search functionality as usual
-2. When viewing search results, click the "Ask AI" button that appears to get an AI-generated answer based on the documentation
+1. Use the regular Algolia search functionality by clicking the search button
+2. When viewing search results, they'll see an "Ask AI" button for queries
+3. Clicking the AI button opens a modal that generates an answer using your documentation content
 
-## Troubleshooting
+## Customization
 
-### Module not found errors
+You can customize the appearance by modifying the provided CSS variables in your custom CSS:
 
-If you encounter errors like:
-
-```
-Module not found: Error: Can't resolve './components/AiEnhancedSearchBar.jsx'
-```
-
-Make sure you're importing the components without file extensions:
-
-```js
-// Correct
-import { AiEnhancedSearchBar } from 'docusaurus-openai-search';
-
-// Incorrect - don't include file extensions
-import { AiEnhancedSearchBar } from 'docusaurus-openai-search/dist/components/AiEnhancedSearchBar';
+```css
+:root {
+  --ai-search-button-bg: var(--ifm-color-primary);
+  --ai-search-button-hover-bg: var(--ifm-color-primary-dark);
+  --ai-modal-header-color: var(--ifm-color-content-secondary);
+  --ai-error-color: var(--ifm-color-danger);
+}
 ```
 
-### OpenAI API Issues
+## Advanced Options
 
-If the AI doesn't respond, check:
+You can pass additional options to the `AiEnhancedSearchBar` component:
 
-1. Your OpenAI API key is correctly set in the config script
-2. You have sufficient credits on your OpenAI account
-3. You're using a supported model (the package uses "gpt-4.1" by default)
+```jsx
+<AiEnhancedSearchBar
+  // Algolia config
+  appId="YOUR_APP_ID"
+  apiKey="YOUR_SEARCH_API_KEY" 
+  indexName="YOUR_INDEX_NAME"
+  
+  // OpenAI config (optional)
+  model="gpt-4" // Default model to use
+  maxTokens={2000} // Maximum tokens to use
+  temperature={0.5} // Temperature for responses
+  
+  // UI customization (optional)
+  textOverrides={{
+    aiButtonText: "Get AI Answer",
+    modalTitle: "AI Documentation Assistant",
+    loadingText: "Analyzing documentation...",
+    errorText: "Sorry, I couldn't find an answer.",
+    retryButtonText: "Try Again",
+    footerText: "Powered by OpenAI"
+  }}
+/>
+```
 
 ## Security Considerations
 
-**Important**: Never expose your OpenAI API key in client-side code in a production environment. Consider:
+⚠️ **Important**: Never expose your OpenAI API key directly in client-side code. Use environment variables and server-side protection.
 
-1. Using a proxy server to make the OpenAI API calls
-2. Implementing user authentication before allowing AI queries
-3. Setting rate limits to prevent abuse
+For production, consider:
+1. Using a proxy API endpoint to hide your OpenAI key
+2. Setting rate limits
+3. Adding user authentication for API access
 
 ## License
 

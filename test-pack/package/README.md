@@ -84,7 +84,7 @@ SearchBar.
 ## Customization
 
 You can customize the appearance by overriding the CSS classes in your own stylesheets. See the
-[CSS file](src/styles/aiSearch.css) for all available classes.
+[CSS file](src/styles.css) for all available classes.
 
 ## Example
 
