@@ -37,12 +37,68 @@ module.exports = {
 };
 ```
 
-### 2. Create a script to expose the OpenAI API key
+### 2. Expose the OpenAI API key
 
-Create a file at `static/docusaurus-openai-search.js`:
+You can use one of the following approaches:
+
+#### Option A: Using the environment variables plugin (recommended)
+
+The package includes a plugin that you can import directly:
 
 ```js
-window.OPENAI_API_KEY = '%OPENAI_API_KEY%';
+// In your docusaurus.config.js
+const { envPlugin } = require('docusaurus-openai-search');
+// Or using ES modules
+// import { envPlugin } from 'docusaurus-openai-search';
+
+module.exports = {
+  // ...other config
+  plugins: [
+    // ...other plugins
+    envPlugin,
+  ],
+};
+```
+
+#### Option B: Manually create the environment variables plugin
+
+Create a file named `docusaurus-env-variables-plugin.js` in your project root:
+
+```js
+// A Docusaurus plugin to provide environment variables to the client
+
+const plugin = function (context, options) {
+  return {
+    name: "docusaurus-env-variables-plugin",
+    injectHtmlTags() {
+      return {
+        headTags: [
+          {
+            tagName: "script",
+            innerHTML: `window.OPENAI_API_KEY = "${process.env.OPENAI_API_KEY || ""}"`,
+          },
+        ],
+      };
+    },
+  };
+};
+
+module.exports = plugin;
+module.exports.default = plugin;
+```
+
+Then add the plugin to your `docusaurus.config.js`:
+
+```js
+const envPlugin = require('./docusaurus-env-variables-plugin');
+
+module.exports = {
+  // ...other config
+  plugins: [
+    // ...other plugins
+    envPlugin,
+  ],
+};
 ```
 
 ### 3. Add the swizzled theme component
