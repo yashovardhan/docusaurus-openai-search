@@ -1,0 +1,50 @@
+{
+    "name": "docusaurus-openai-search",
+    "version": "0.1.0",
+    "description": "AI-enhanced search component for Docusaurus using OpenAI",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "static"
+    ],
+    "scripts": {
+        "build": "tsc && npm run copy-css",
+        "copy-css": "mkdir -p dist/styles && cp src/styles/aiSearch.css dist/styles/",
+        "prepare": "npm run build"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/docusaurus-openai-search.git"
+    },
+    "keywords": [
+        "docusaurus",
+        "docusaurus-theme",
+        "ai",
+        "search",
+        "openai"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "peerDependencies": {
+        "@docusaurus/core": ">=2.0.0",
+        "@docusaurus/theme-search-algolia": ">=2.0.0",
+        "react": ">=16.8.0",
+        "react-dom": ">=16.8.0"
+    },
+    "dependencies": {
+        "@docsearch/react": "^3.0.0",
+        "algoliasearch": "^4.14.0",
+        "marked": "^5.0.0",
+        "openai": "^4.0.0"
+    },
+    "devDependencies": {
+        "@docusaurus/core": "^3.7.0",
+        "@docusaurus/theme-search-algolia": "^3.7.0",
+        "@docusaurus/types": "^3.7.0",
+        "@types/marked": "^5.0.2",
+        "@types/react": "^18.0.0",
+        "@types/react-dom": "^18.0.0",
+        "typescript": "^4.9.0"
+    }
+}

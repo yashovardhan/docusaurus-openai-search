@@ -1,0 +1,36 @@
+# Source files (since we publish dist)
+src/
+
+# Tests
+__tests__/
+test/
+tests/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Config files
+tsconfig.json
+.eslintrc
+.prettierrc
+jest.config.js
+.travis.yml
+.github/
+
+# Examples and docs
+examples/
+docs/
+*.md
+!README.md
+
+# Development files
+.vscode/
+.idea/
+.DS_Store
+*.log
+.env*
+
+# Git files
+.git/
+.gitignore 
