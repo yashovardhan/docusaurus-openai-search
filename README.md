@@ -39,29 +39,6 @@ module.exports = {
 
 ### 2. Expose the OpenAI API key
 
-You need to add the environment variables plugin to your configuration:
-
-#### Option A: Using the included plugin (recommended)
-
-The package includes a plugin that you can import directly:
-
-```js
-// In your docusaurus.config.js
-const { envPlugin } = require('docusaurus-openai-search');
-// Or using ES modules
-// import { envPlugin } from 'docusaurus-openai-search';
-
-module.exports = {
-  // ...other config
-  plugins: [
-    // ...other plugins
-    envPlugin,
-  ],
-};
-```
-
-#### Option B: Manually create the plugin
-
 Create a file named `docusaurus-env-variables-plugin.js` in your project root:
 
 ```js
