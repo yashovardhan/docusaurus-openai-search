@@ -1,182 +1,218 @@
-/* AI-enhanced Search Bar Styles */
+/* AI-enhanced Search Bar Styles - Minimized version */
+.docusaurus-openai-search {
+  font-family: var(--ifm-font-family-base);
+  color: var(--ifm-font-color-base);
+}
 
 /* AI Search Header */
-.ai-search-header {
+.docusaurus-openai-search .ai-search-header {
   display: flex;
-  align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--docsearch-hit-border-color, rgba(128, 126, 163, 0.3));
-  background: var(--docsearch-container-background, rgba(33, 33, 33, 0.8));
+  padding: var(--ifm-spacing-vertical) var(--ifm-spacing-horizontal);
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
 }
 
-.ai-search-button-header {
+.docusaurus-openai-search .ai-search-button-header {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 16px 24px;
-  border-radius: 8px;
+  padding: calc(var(--ifm-button-padding-vertical) * 1.2) calc(var(--ifm-button-padding-horizontal) * 1.2);
+  border-radius: var(--ifm-button-border-radius);
   border: none;
-  background: linear-gradient(135deg, var(--ifm-color-primary, #3578e5), var(--ifm-color-primary-dark, #306cce));
+  background: var(--docsearch-highlight-color, var(--ifm-color-primary));
   color: white;
-  font-weight: 600;
-  font-size: 1.05rem;
+  font-weight: var(--ifm-font-weight-bold);
+  font-size: var(--ifm-font-size-base);
   cursor: pointer;
-  text-align: center;
   transition: all 0.2s ease;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--ifm-global-shadow-md);
   letter-spacing: 0.01em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.ai-search-button-header:hover {
-  background: linear-gradient(135deg, var(--ifm-color-primary-dark, #306cce), var(--ifm-color-primary-darker, #2658a8));
-  transform: translateY(-2px);
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+.docusaurus-openai-search .ai-search-button-header:hover {
+  background: var(--docsearch-highlight-color, var(--ifm-color-primary));
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: var(--ifm-global-shadow-lg);
 }
 
-.ai-search-button-header:active {
+.docusaurus-openai-search .ai-search-button-header:active {
   transform: translateY(0);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.ai-search-button-header svg {
+.docusaurus-openai-search .ai-search-button-header svg {
   margin-right: 12px;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
+  opacity: 0.9;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
 }
 
 /* AI Modal Styles */
-.ai-modal-overlay {
+.docusaurus-openai-search .ai-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background-color: var(--docsearch-container-background, var(--ifm-overlay-color));
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
-  overflow-y: auto;
-  padding: 20px;
+  z-index: var(--ifm-z-index-overlay);
+  padding: var(--ifm-spacing-lg);
+  backdrop-filter: blur(2px);
 }
 
-.ai-modal-content {
-  background-color: var(--docsearch-modal-background, white);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.docusaurus-openai-search .ai-modal-content {
+  background-color: var(--docsearch-modal-background, var(--ifm-background-color));
+  border-radius: var(--ifm-card-border-radius);
+  box-shadow: var(--docsearch-modal-shadow, 0 6px 30px rgba(0, 0, 0, 0.12));
   width: 100%;
-  max-width: 800px;
-  max-height: 85vh;
+  max-width: 850px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: relative;
-  color: var(--docsearch-text-color, #1c1e21);
+  color: var(--ifm-font-color-base);
+  margin: var(--ifm-spacing-lg) 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  animation: modal-appear 0.2s ease forwards;
 }
 
-.ai-modal-header {
+.docusaurus-openai-search .ai-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--docsearch-separator-color, #e5e5e5);
+  padding: calc(var(--ifm-spacing-vertical) * 1.2) calc(var(--ifm-spacing-horizontal) * 1.2);
+  border-bottom: 1px solid var(--docsearch-separator-color, var(--ifm-color-emphasis-200));
+  margin-bottom: var(--ifm-spacing-xs);
+  background-color: var(--docsearch-footer-background, var(--ifm-background-surface-color));
 }
 
-.ai-modal-header h3 {
+.docusaurus-openai-search .ai-modal-header h3 {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--docsearch-heading-color, inherit);
+  font-size: var(--ifm-h4-font-size);
+  font-weight: var(--ifm-font-weight-bold);
+  padding: var(--ifm-spacing-xs) var(--ifm-spacing-sm);
+  color: var(--docsearch-heading-color, var(--ifm-heading-color));
 }
 
-.ai-modal-close {
+.docusaurus-openai-search .ai-modal-close {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-  color: var(--docsearch-muted-color, #6c6c6d);
-  padding: 5px;
+  color: var(--docsearch-muted-color, var(--ifm-color-secondary-darkest));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: all var(--ifm-transition-fast);
+  font-size: 24px;
+  font-weight: 300;
+  padding: 0;
 }
 
-.ai-modal-body {
-  padding: 0;
-  overflow-y: auto;
+.docusaurus-openai-search .ai-modal-close:hover {
+  background-color: var(--docsearch-hit-active-color, var(--ifm-color-emphasis-200));
+  color: var(--ifm-color-emphasis-700);
+}
+
+.docusaurus-openai-search .ai-modal-body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
-.ai-question {
-  padding: 16px 24px;
-  background-color: var(--docsearch-highlight-bg, #f5f6f7);
-  border-bottom: 1px solid var(--docsearch-separator-color, #e5e5e5);
-  font-weight: 500;
+.docusaurus-openai-search .ai-question {
+  padding: calc(var(--ifm-spacing-vertical) * 1.5) calc(var(--ifm-spacing-horizontal) * 1.5);
+  background-color: var(--docsearch-highlight-bg, var(--ifm-color-emphasis-100));
+  border-bottom: 1px solid var(--docsearch-separator-color, var(--ifm-color-emphasis-200));
+  font-weight: var(--ifm-font-weight-semibold);
+  margin-bottom: var(--ifm-spacing-sm);
+  font-size: calc(var(--ifm-font-size-base) * 1.05);
 }
 
-.ai-answer {
-  padding: 16px 24px;
+.docusaurus-openai-search .ai-answer {
+  padding: calc(var(--ifm-spacing-vertical) * 1.5) calc(var(--ifm-spacing-horizontal) * 1.5);
   overflow-y: auto;
   flex: 1;
 }
 
-.ai-response {
-  line-height: 1.6;
+.docusaurus-openai-search .ai-response {
+  line-height: var(--ifm-line-height-base, 1.6);
+  margin: var(--ifm-spacing-sm) 0;
 }
 
-.ai-response-text {
+.docusaurus-openai-search .ai-response-text {
   max-width: 100%;
   overflow-x: auto;
+  padding: var(--ifm-spacing-sm);
 }
 
-.ai-response-text code {
-  font-size: 0.9em;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  background-color: var(--docsearch-hit-active-color, rgba(0, 0, 0, 0.05));
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+.docusaurus-openai-search .ai-response-text code {
+  font-size: var(--ifm-code-font-size);
+  padding: var(--ifm-code-padding-vertical) var(--ifm-code-padding-horizontal);
+  border-radius: var(--ifm-code-border-radius);
+  background-color: var(--ifm-code-background);
+  color: var(--ifm-code-color);
+  font-family: var(--ifm-font-family-monospace);
+  margin: 0 var(--ifm-spacing-xs);
 }
 
-.ai-response-text pre {
-  background-color: var(--docsearch-container-background, #f6f8fa);
-  border-radius: 6px;
-  overflow-x: auto;
-  padding: 16px;
-  margin: 16px 0;
-  tab-size: 2;
+.docusaurus-openai-search .ai-response-text pre {
+  background-color: var(--ifm-pre-background);
+  border-radius: var(--ifm-pre-border-radius);
+  padding: calc(var(--ifm-pre-padding) * 1.2);
+  margin: calc(var(--ifm-spacing-vertical) * 1.2) 0;
+  border: 1px solid var(--ifm-color-emphasis-200);
 }
 
-.ai-response-text pre code {
+.docusaurus-openai-search .ai-response-text pre code {
   background-color: transparent;
   padding: 0;
-  white-space: pre;
   font-size: 0.85em;
+  color: var(--ifm-pre-color);
+  border: none;
+  margin: 0;
 }
 
-.ai-loading {
+.docusaurus-openai-search .ai-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
+  padding: calc(var(--ifm-spacing-xl) * 1.2) var(--ifm-spacing-xl);
   text-align: center;
-  color: var(--docsearch-muted-color, #6c6c6d);
+  color: var(--ifm-color-secondary-darkest);
+  margin: var(--ifm-spacing-lg) 0;
 }
 
-.ai-loading-spinner {
+.docusaurus-openai-search .ai-loading-spinner {
   display: inline-block;
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--ifm-color-emphasis-200);
   border-radius: 50%;
-  border-top-color: var(--docsearch-primary-color, #0066cc);
+  border-top-color: var(--docsearch-highlight-color, var(--ifm-color-primary));
   animation: ai-spin 1s ease-in-out infinite;
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--ifm-spacing-vertical) * 1.5);
 }
 
 @keyframes ai-spin {
@@ -185,293 +221,328 @@
   }
 }
 
-.ai-modal-footer {
-  padding: 12px 24px;
-  border-top: 1px solid var(--docsearch-separator-color, #e5e5e5);
-  color: var(--docsearch-muted-color, #6c6c6d);
-  font-size: 0.85rem;
+.docusaurus-openai-search .ai-error {
+  padding: var(--ifm-spacing-lg);
   text-align: center;
+  color: var(--ifm-font-color-base);
+  margin: var(--ifm-spacing-lg) 0;
 }
 
-.ai-error {
-  padding: 24px;
-  text-align: center;
-  color: var(--docsearch-text-color, #1c1e21);
+.docusaurus-openai-search .error-message {
+  margin-bottom: var(--ifm-spacing-vertical);
+  padding: var(--ifm-spacing-vertical);
+  background-color: var(--ifm-color-danger-lighter);
+  border-radius: var(--ifm-card-border-radius);
+  border: 1px solid var(--ifm-color-danger-light);
+  color: var(--ifm-color-danger);
 }
 
-.error-message {
-  margin-bottom: 16px;
-  padding: 16px;
-  background-color: rgba(255, 0, 0, 0.05);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 0, 0, 0.1);
-  color: var(--docsearch-error-color, #c41e3a);
+.docusaurus-openai-search .ai-error-actions {
+  margin: var(--ifm-spacing-vertical) 0;
 }
 
-.ai-error-actions {
-  margin-top: 16px;
-  margin-bottom: 16px;
-}
-
-.ai-retry-button {
+.docusaurus-openai-search .ai-retry-button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background-color: var(--docsearch-primary-color, #0066cc);
-  color: white;
+  gap: var(--ifm-spacing-horizontal-sm);
+  background-color: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
   border: none;
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-size: 0.9rem;
+  border-radius: var(--ifm-button-border-radius);
+  padding: var(--ifm-button-padding-vertical) var(--ifm-button-padding-horizontal);
+  font-size: var(--ifm-font-size-base);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color var(--ifm-transition-fast);
 }
 
-.ai-retry-button:hover {
-  background-color: var(--docsearch-primary-hover-color, #0052a3);
+.docusaurus-openai-search .ai-retry-button:hover {
+  background-color: var(--ifm-color-primary-darker);
 }
 
-.ai-search-links {
-  margin-top: 24px;
+.docusaurus-openai-search .ai-search-links {
+  margin-top: var(--ifm-spacing-lg);
   text-align: left;
+  padding: 0 var(--ifm-spacing-md);
 }
 
-.ai-search-links p {
-  margin-bottom: 8px;
-  font-weight: 500;
+.docusaurus-openai-search .ai-search-links p {
+  margin-bottom: var(--ifm-spacing-md);
+  padding: var(--ifm-spacing-xs) 0;
+  font-weight: var(--ifm-font-weight-semibold);
 }
 
-.ai-search-links ul {
+.docusaurus-openai-search .ai-search-links ul {
   list-style-type: none;
-  padding-left: 0;
+  padding-left: var(--ifm-spacing-sm);
+  margin: var(--ifm-spacing-md) 0;
 }
 
-.ai-search-links li {
-  margin-bottom: 8px;
+.docusaurus-openai-search .ai-search-links li {
+  margin-bottom: var(--ifm-spacing-md);
+  padding: var(--ifm-spacing-xs) 0;
 }
 
-.ai-search-links a {
-  color: var(--docsearch-primary-color, #0066cc);
+.docusaurus-openai-search .ai-search-links a {
+  color: var(--ifm-link-color);
   text-decoration: none;
 }
 
-.ai-search-links a:hover {
+.docusaurus-openai-search .ai-search-links a:hover {
   text-decoration: underline;
+  color: var(--ifm-link-hover-color);
 }
 
-.ai-notice {
-  margin-top: 24px;
-  padding: 16px;
-  background-color: rgba(255, 170, 0, 0.08);
-  border-left: 4px solid rgba(255, 170, 0, 0.5);
-  border-radius: 4px;
+.docusaurus-openai-search .ai-notice {
+  margin-top: var(--ifm-spacing-vertical);
+  padding: var(--ifm-alert-padding-vertical);
+  background-color: var(--ifm-color-warning-lightest);
+  border-left: 4px solid var(--ifm-color-warning-light);
+  border-radius: var(--ifm-alert-border-radius);
 }
 
-.ai-notice p {
+html[data-theme='dark'] .docusaurus-openai-search .ai-notice {
+  background-color: var(--ifm-color-warning-darkest);
+  border-left-color: var(--ifm-color-warning-dark);
+}
+
+.docusaurus-openai-search .ai-notice p {
   margin-top: 0;
-  margin-bottom: 8px;
+  margin-bottom: var(--ifm-spacing-vertical-sm);
 }
 
-.ai-notice ul {
+.docusaurus-openai-search .ai-notice ul {
   margin-bottom: 0;
 }
 
 /* Search footer styling */
-.ai-search-footer {
+.docusaurus-openai-search .ai-search-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
-  border-top: 1px solid var(--ifm-color-emphasis-200, #ebedf0);
+  padding: var(--ifm-spacing-vertical) var(--ifm-spacing-horizontal);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
 }
 
-.ai-search-footer-left {
-  font-size: 0.9rem;
+.docusaurus-openai-search .ai-search-footer-left {
+  font-size: var(--ifm-font-size-sm);
 }
 
-.ai-search-see-all {
-  color: var(--ifm-color-primary, #3578e5);
+.docusaurus-openai-search .ai-search-see-all {
+  color: var(--ifm-color-primary);
   text-decoration: none;
 }
 
-.ai-search-see-all:hover {
+.docusaurus-openai-search .ai-search-see-all:hover {
   text-decoration: underline;
 }
 
-/* Docusearch overrides to fix z-index issues */
-.DocSearch-Container {
+/* Z-index fixes */
+.docusaurus-openai-search .DocSearch-Container,
+.docusaurus-openai-search .DocSearch-Modal {
   z-index: 9000 !important;
 }
 
-.DocSearch-Modal {
-  z-index: 9001 !important;
-}
-
-.DocSearch-SearchBar {
+.docusaurus-openai-search .DocSearch-SearchBar {
   z-index: 9002 !important;
 }
 
-.DocSearch-Dropdown {
+.docusaurus-openai-search .DocSearch-Dropdown {
   z-index: 9001 !important;
 }
 
-.DocSearch-Hit-source {
+.docusaurus-openai-search .DocSearch-Hit-source {
   z-index: 100 !important;
 }
 
 /* Make sure our search button also has a high z-index */
-.DocSearch-Button {
+.docusaurus-openai-search .DocSearch-Button {
   z-index: 200 !important;
   position: relative;
 }
 
 /* Dark theme tweaks */
-:root[data-theme='dark'] .ai-response-text pre {
-  background-color: var(--docsearch-container-background, #1c1e21);
+:root[data-theme='dark'] .docusaurus-openai-search .ai-search-button-header {
+  background: var(--docsearch-highlight-color, var(--ifm-color-primary-darker));
 }
 
-:root[data-theme='dark'] .ai-notice {
-  background-color: rgba(255, 170, 0, 0.1);
+:root[data-theme='dark'] .docusaurus-openai-search .ai-search-button-header:hover {
+  background: var(--docsearch-highlight-color, var(--ifm-color-primary-darkest));
+  opacity: 0.9;
 }
 
-:root[data-theme='dark'] .error-message {
-  background-color: rgba(255, 0, 0, 0.1);
-  border-color: rgba(255, 0, 0, 0.2);
+:root[data-theme='dark'] .docusaurus-openai-search .ai-question {
+  background: var(--ifm-color-emphasis-200);
 }
 
-/* Dark mode adjustments */
-html[data-theme='dark'] .ai-search-button-header {
-  background: linear-gradient(135deg, var(--ifm-color-primary, #4e89e8), var(--ifm-color-primary-dark, #3a70c8));
-}
-
-html[data-theme='dark'] .ai-search-button-header:hover {
-  background: linear-gradient(135deg, var(--ifm-color-primary-dark, #3a70c8), var(--ifm-color-primary-darker, #2a5ca8));
-}
-
-html[data-theme='dark'] .ai-question {
-  background: var(--ifm-color-emphasis-200, #2d333b);
-}
-
-html[data-theme='dark'] .ai-error {
+:root[data-theme='dark'] .docusaurus-openai-search .ai-error {
   background: rgba(235, 87, 87, 0.2);
 }
 
-html[data-theme='dark'] .ai-notice {
-  background: rgba(84, 199, 236, 0.1);
+:root[data-theme='dark'] .docusaurus-openai-search .error-message {
+  background-color: var(--ifm-color-danger-darker);
+  border-color: var(--ifm-color-danger-dark);
 }
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
-  /* AI Modal */
-  .ai-modal-content {
-    width: 100%;
-    max-width: none;
+  .docusaurus-openai-search .ai-modal-content {
     max-height: 100vh;
     margin: 0;
     border-radius: 0;
+    width: 100%;
   }
   
-  .ai-modal-overlay {
+  .docusaurus-openai-search .ai-modal-overlay {
     padding: 0;
   }
   
-  .ai-modal-header h3 {
-    font-size: 1.3rem;
+  .docusaurus-openai-search .ai-modal-header {
+    padding: 16px 20px;
   }
   
-  .ai-modal-body {
-    padding: 0;
+  .docusaurus-openai-search .ai-modal-close {
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+    margin-right: -4px;
   }
   
-  .ai-question {
-    padding: 12px;
-    font-size: 1rem;
+  .docusaurus-openai-search .ai-modal-header h3 {
+    font-size: var(--ifm-h3-font-size);
+    padding: 2px 0;
   }
   
-  /* AI Search Button */
-  .ai-search-header {
-    padding: 12px 16px;
+  .docusaurus-openai-search .ai-question {
+    padding: 16px 20px;
+    font-size: var(--ifm-font-size-base);
   }
   
-  .ai-search-button-header {
+  .docusaurus-openai-search .ai-answer {
+    padding: 16px 20px;
+  }
+  
+  .docusaurus-openai-search .ai-search-header {
+    padding: 16px 20px;
+  }
+  
+  .docusaurus-openai-search .ai-search-button-header {
     padding: 14px 20px;
-    font-size: 1rem;
+    font-size: var(--ifm-font-size-base);
+  }
+  
+  .docusaurus-openai-search .ai-search-button-header svg {
+    margin-right: 10px;
+    width: 20px;
+    height: 20px;
+  }
+  
+  .docusaurus-openai-search .ai-modal-footer {
+    padding: 14px 20px;
   }
 }
 
 /* Markdown rendering styles */
-.markdown h1 {
-  font-size: 1.8rem;
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
+.docusaurus-openai-search .markdown {
+  font-family: var(--ifm-font-family-base);
+  font-size: var(--ifm-font-size-base);
+  line-height: var(--ifm-line-height-base);
 }
 
-.markdown h2 {
-  font-size: 1.5rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
+.docusaurus-openai-search .markdown h1 {
+  font-family: var(--ifm-heading-font-family);
+  font-size: var(--ifm-h1-font-size);
+  font-weight: var(--ifm-heading-font-weight);
+  line-height: var(--ifm-heading-line-height);
+  margin-top: var(--ifm-heading-margin-top);
+  margin-bottom: var(--ifm-heading-margin-bottom);
 }
 
-.markdown h3 {
-  font-size: 1.25rem;
-  margin-top: 1.25rem;
-  margin-bottom: 0.75rem;
+.docusaurus-openai-search .markdown h2 {
+  font-family: var(--ifm-heading-font-family);
+  font-size: var(--ifm-h2-font-size);
+  font-weight: var(--ifm-heading-font-weight);
+  line-height: var(--ifm-heading-line-height);
+  margin-top: var(--ifm-heading-margin-top);
+  margin-bottom: var(--ifm-heading-margin-bottom);
 }
 
-.markdown h4 {
-  font-size: 1.1rem;
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
+.docusaurus-openai-search .markdown h3 {
+  font-family: var(--ifm-heading-font-family);
+  font-size: var(--ifm-h3-font-size);
+  font-weight: var(--ifm-heading-font-weight);
+  line-height: var(--ifm-heading-line-height);
+  margin-top: var(--ifm-heading-margin-top);
+  margin-bottom: var(--ifm-heading-margin-bottom);
 }
 
-.markdown p {
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+.docusaurus-openai-search .markdown h4 {
+  font-family: var(--ifm-heading-font-family);
+  font-size: var(--ifm-h4-font-size);
+  font-weight: var(--ifm-heading-font-weight);
+  line-height: var(--ifm-heading-line-height);
+  margin-top: var(--ifm-heading-margin-top);
+  margin-bottom: var(--ifm-heading-margin-bottom);
 }
 
-.markdown ul, .markdown ol {
-  padding-left: 1.5rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+.docusaurus-openai-search .markdown p {
+  margin-top: var(--ifm-paragraph-margin-top);
+  margin-bottom: var(--ifm-paragraph-margin-bottom);
 }
 
-.markdown li {
-  margin-bottom: 0.25rem;
+.docusaurus-openai-search .markdown ul, .docusaurus-openai-search .markdown ol {
+  padding-left: var(--ifm-list-left-padding);
+  margin-top: var(--ifm-list-margin);
+  margin-bottom: var(--ifm-list-margin);
 }
 
-.markdown blockquote {
-  border-left: 4px solid var(--docsearch-highlight-color, #5468ff);
-  padding-left: 1rem;
+.docusaurus-openai-search .markdown li {
+  margin-bottom: var(--ifm-list-item-margin);
+}
+
+.docusaurus-openai-search .markdown blockquote {
+  border-left: 4px solid var(--ifm-color-primary);
+  padding-left: var(--ifm-global-spacing);
   margin-left: 0;
-  color: var(--docsearch-muted-color, #6c6c6d);
+  color: var(--ifm-color-secondary-darkest);
 }
 
-.markdown a {
-  color: var(--docsearch-primary-color, #0066cc);
+.docusaurus-openai-search .markdown a {
+  color: var(--ifm-link-color);
   text-decoration: none;
 }
 
-.markdown a:hover {
+.docusaurus-openai-search .markdown a:hover {
   text-decoration: underline;
+  color: var(--ifm-link-hover-color);
 }
 
-.markdown img {
+.docusaurus-openai-search .markdown img {
   max-width: 100%;
   height: auto;
 }
 
-.markdown table {
+.docusaurus-openai-search .markdown table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0;
+  margin: var(--ifm-table-margin);
 }
 
-.markdown th, .markdown td {
-  border: 1px solid var(--docsearch-separator-color, #e5e5e5);
-  padding: 0.5rem;
+.docusaurus-openai-search .markdown th, .docusaurus-openai-search .markdown td {
+  border: 1px solid var(--ifm-table-border-color);
+  padding: var(--ifm-table-cell-padding);
 }
 
-.markdown th {
-  background-color: var(--docsearch-highlight-bg, #f5f6f7);
-  font-weight: 600;
+.docusaurus-openai-search .markdown th {
+  background-color: var(--ifm-table-head-background);
+  font-weight: var(--ifm-font-weight-bold);
+}
+
+.docusaurus-openai-search .ai-modal-footer {
+  padding: calc(var(--ifm-spacing-vertical) * 1.2) calc(var(--ifm-spacing-horizontal) * 1.2);
+  border-top: 1px solid var(--docsearch-separator-color, var(--ifm-color-emphasis-200));
+  color: var(--docsearch-muted-color, var(--ifm-color-secondary-darkest));
+  font-size: var(--ifm-font-size-sm);
+  text-align: center;
+  background-color: var(--docsearch-footer-background, var(--ifm-background-surface-color));
+  margin-top: var(--ifm-spacing-md);
 } 

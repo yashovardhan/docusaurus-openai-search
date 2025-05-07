@@ -26,6 +26,9 @@ lerna-debug.log*
 .env
 .env.local
 .env.development.local
+
+# Packed module
+*.tgz
 .env.test.local
 .env.production.local
 

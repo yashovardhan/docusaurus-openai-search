@@ -207,6 +207,7 @@ export function DocusaurusAISearch({
   const prepareSearchContainer = useCallback(() => {
     if (!searchContainer.current) {
       const divElement = document.createElement('div');
+      divElement.className = 'docusaurus-openai-search';
       searchContainer.current = divElement;
       document.body.insertBefore(divElement, document.body.firstChild);
     }
@@ -289,10 +290,7 @@ export function DocusaurusAISearch({
             aiButton.innerHTML = `
               <button class="ai-search-button-header" aria-label="${buttonAriaLabel}">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M21.928 11.607c-.202-.488-.635-.605-.928-.633V8c0-1.103-.897-2-2-2h-6V4.61c.305-.274.5-.668.5-1.11a1.5 1.5 0 0 0-3 0c0 .442.195.836.5 1.11V6H5c-1.103 0-2 .897-2 2v2.997l-.082.006A1 1 0 0 0 1.99 12v2a1 1 0 0 0 1 1H3v5c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2v-5a1 1 0 0 0 1-1v-1.938a1.006 1.006 0 0 0-.072-.455zM5 20V8h14l.001 3.996L19 12v2l.001.005.001 5.995H5z"></path>
-                  <ellipse cx="8.5" cy="12" rx="1.5" ry="2"></ellipse>
-                  <ellipse cx="15.5" cy="12" rx="1.5" ry="2"></ellipse>
-                  <path d="M8 16h8v1H8z"></path>
+                  <path d="M12 2c-4.4 0-8 3.6-8 8 0 2.8 1.5 5.3 3.7 6.7.1.1.2.2.3.2V20c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-3.1c.1 0 .2-.1.3-.2 2.2-1.4 3.7-3.9 3.7-6.7 0-4.4-3.6-8-8-8zm2 18h-4v-1h4v1zm0-3h-4v-1h4v1zm.5-3.6c-.2.2-.3.3-.5.4V15h-4v-1.2c-.2-.1-.3-.2-.5-.4C8 12.2 7 10.2 7 9c0-2.8 2.2-5 5-5s5 2.2 5 5c0 1.2-1 3.2-2.5 4.4z" />
                 </svg>
                 ${buttonText}
               </button>
@@ -395,8 +393,53 @@ export function DocusaurusAISearch({
             typingTimer = setTimeout(doneTyping, 500);
           });
           
-          searchInput.addEventListener('keydown', () => {
+          searchInput.addEventListener('keydown', (e) => {
             if (typingTimer) clearTimeout(typingTimer);
+            
+            if (e.key === 'Enter' && searchInput.value.trim().length >= 3) {
+              const hasResults = document.querySelector('.DocSearch-Hit');
+              
+              if (hasResults && aiConfig?.enabled !== false) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const searchResultItems = Array.from(
+                  document.querySelectorAll('.DocSearch-Hit')
+                ).map((hit) => {
+                  const hierarchy: Record<string, string> = {};
+                  
+                  hit.querySelectorAll('.DocSearch-Hit-title, .DocSearch-Hit-path, .DocSearch-Hit-contentTitle')
+                    .forEach((el) => {
+                      const level = el.className.includes('title') 
+                        ? 'lvl1' 
+                        : el.className.includes('path') 
+                          ? 'lvl0' 
+                          : 'content';
+                      hierarchy[level] = el.textContent || '';
+                    });
+                  
+                  const url = hit.querySelector('a')?.getAttribute('href');
+                  
+                  return {
+                    hierarchy,
+                    url,
+                    _snippetResult: {
+                      content: {
+                        value: hit.querySelector('.DocSearch-Hit-content')?.textContent || ''
+                      }
+                    }
+                  };
+                });
+                
+                const rankedResults = rankSearchResultsByRelevance(
+                  searchInput.value.trim(), 
+                  searchResultItems as InternalDocSearchHit[]
+                );
+                
+                handleAskAI(searchInput.value.trim(), rankedResults);
+                closeModal();
+              }
+            }
           });
           
           return () => {
@@ -414,7 +457,7 @@ export function DocusaurusAISearch({
   }, [isOpen, handleAskAI, closeModal, aiConfig]);
   
   return (
-    <>
+    <div className="docusaurus-openai-search">
       <Head>
         {appId && (
           <link
@@ -468,6 +511,6 @@ export function DocusaurusAISearch({
           config={aiConfig}
         />
       )}
-    </>
+    </div>
   );
 } 
