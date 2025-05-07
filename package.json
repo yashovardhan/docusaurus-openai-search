@@ -16,7 +16,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/yourusername/docusaurus-openai-search.git"
+        "url": "https://github.com/yashovardhanagrawal/docusaurus-openai-search.git"
     },
     "keywords": [
         "docusaurus",
@@ -41,12 +41,7 @@
     },
     "devDependencies": {
         "@docsearch/css": "^3.9.0",
-        "@docsearch/js": "^3.9.0",
         "@docusaurus/core": "^3.7.0",
-        "@docusaurus/module-type-aliases": "^3.7.0",
-        "@docusaurus/preset-classic": "^3.7.0",
-        "@docusaurus/theme-classic": "^3.7.0",
-        "@docusaurus/theme-common": "^3.7.0",
         "@docusaurus/theme-search-algolia": "^3.7.0",
         "@docusaurus/types": "^3.7.0",
         "@types/marked": "^5.0.2",

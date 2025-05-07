@@ -5,13 +5,9 @@ import { DocumentContent, RankedSearchResult } from './types';
  * Tracks AI queries for analytics purposes
  */
 export function trackAIQuery(query: string, success: boolean = true): void {
-  // Log the query for analytics (can be extended with custom analytics)
-  console.log(
-    `[AI Search] Query: "${query}" (${success ? "success" : "failed"})`,
-  );
+  console.log(`[AI Search] Query: "${query}" (${success ? "success" : "failed"})`);
 
   try {
-    // Example: track with a custom analytics event if you have analytics set up
     if (typeof window !== "undefined" && (window as any).gtag) {
       (window as any).gtag("event", "ai_search", {
         event_category: "search",
@@ -33,95 +29,70 @@ export async function fetchDocumentContent(url: string): Promise<string> {
     let path = url;
 
     if (typeof window !== "undefined") {
-      // Check if it's from the same domain
       const urlObj = new URL(url, window.location.origin);
 
       if (urlObj.origin === window.location.origin) {
-        // For same-origin URLs, we can just fetch the HTML file
-        // Strip off origin and handle paths that end with / by adding index.html
         path = urlObj.pathname;
 
-        // Handle typical Docusaurus routes - append index.html if needed
+        // Handle typical Docusaurus routes
         if (path.endsWith("/")) {
           path = `${path}index.html`;
         } else if (!path.includes(".")) {
-          // If there's no file extension, it's likely a route that needs /index.html
           path = `${path}/index.html`;
         }
       } else {
-        // For external URLs, we can't fetch due to CORS, so just use what's available
         return "";
       }
     }
 
-    try {
-      const response = await fetch(path);
+    const response = await fetch(path);
+    if (!response.ok) return "";
 
-      if (!response.ok) {
-        console.warn(`Failed to fetch content from ${path}: ${response.statusText}`);
-        return "";
-      }
+    const html = await response.text();
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
 
-      const html = await response.text();
+    // Find the main content area
+    const mainContent =
+      tempDiv.querySelector(".markdown") ||
+      tempDiv.querySelector("article") ||
+      tempDiv.querySelector("main") ||
+      tempDiv.querySelector(".container") ||
+      tempDiv.querySelector('div[class*="docItemContainer"]') ||
+      tempDiv.querySelector('div[class*="docMainContainer"]');
 
-      // Extract main content from the HTML
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = html;
+    if (mainContent) {
+      // Remove non-content elements
+      mainContent.querySelectorAll(
+        "script, style, nav, .navbar, .sidebar, .pagination, .tocCollapsible, .tableOfContents"
+      ).forEach(node => node.remove());
 
-      // Find the main content area (adjust selector based on your Docusaurus theme)
-      const mainContent =
-        tempDiv.querySelector(".markdown") ||
-        tempDiv.querySelector("article") ||
-        tempDiv.querySelector("main") ||
-        tempDiv.querySelector(".container") ||
-        tempDiv.querySelector('div[class*="docItemContainer"]') ||
-        tempDiv.querySelector('div[class*="docMainContainer"]');
-
-      if (mainContent) {
-        // Strip navigation and sidebar elements that don't contain actual content
-        const elementsToRemove = mainContent.querySelectorAll(
-          "script, style, nav, .navbar, .sidebar, .pagination, .tocCollapsible, .tableOfContents",
-        );
-        elementsToRemove.forEach((node) => node.remove());
-
-        // Extract code blocks specially - they're important for technical documentation
-        const codeBlocks: string[] = [];
-
-        // Find all code blocks with different selectors to ensure we get them all
-        const codeElements = mainContent.querySelectorAll(
-          'pre code, .codeBlock, .prism-code, code[class*="language-"], div[class*="codeBlockContainer"]',
-        );
-
-        codeElements.forEach((codeEl) => {
-          const codeContent = codeEl.textContent || "";
-          if (codeContent.trim()) {
-            codeBlocks.push(codeContent);
-          }
-        });
-
-        // Get the main text content
-        let extractedText = mainContent.textContent || "";
-
-        // Add extracted code blocks at the end with special markers if they exist
-        if (codeBlocks.length > 0) {
-          // Deduplicate code blocks
-          const uniqueCodeBlocks = [...new Set(codeBlocks)];
-
-          extractedText += "\n\nCODE EXAMPLES:\n";
-          uniqueCodeBlocks.forEach((code, index) => {
-            extractedText += `\n--- CODE BLOCK ${index + 1} ---\n${code}\n--- END CODE BLOCK ---\n`;
-          });
+      // Extract code blocks
+      const codeBlocks: string[] = [];
+      mainContent.querySelectorAll(
+        'pre code, .codeBlock, .prism-code, code[class*="language-"], div[class*="codeBlockContainer"]'
+      ).forEach(codeEl => {
+        const codeContent = codeEl.textContent || "";
+        if (codeContent.trim()) {
+          codeBlocks.push(codeContent);
         }
+      });
 
-        return extractedText;
+      let extractedText = mainContent.textContent || "";
+
+      // Add extracted code blocks if they exist
+      if (codeBlocks.length > 0) {
+        const uniqueCodeBlocks = [...new Set(codeBlocks)];
+        extractedText += "\n\nCODE EXAMPLES:\n";
+        uniqueCodeBlocks.forEach((code, index) => {
+          extractedText += `\n--- CODE BLOCK ${index + 1} ---\n${code}\n--- END CODE BLOCK ---\n`;
+        });
       }
 
-      console.warn(`Could not find content in ${url}`);
-      return "";
-    } catch (fetchError) {
-      console.error(`Error during fetch for ${path}:`, fetchError);
-      return "";
+      return extractedText;
     }
+
+    return "";
   } catch (error) {
     console.error(`Error fetching document content from ${url}:`, error);
     return "";
@@ -132,32 +103,27 @@ export async function fetchDocumentContent(url: string): Promise<string> {
  * Chunks text into smaller segments to handle large documents
  */
 export function chunkText(text: string, maxChunkSize: number = 1500): string[] {
-  if (!text || text.length <= maxChunkSize) {
-    return [text];
-  }
+  if (!text || text.length <= maxChunkSize) return [text];
 
   const chunks: string[] = [];
   let currentIndex = 0;
 
   while (currentIndex < text.length) {
-    // Find a good breakpoint (paragraph or sentence end)
     let endIndex = Math.min(currentIndex + maxChunkSize, text.length);
 
-    // If we're not at the end of the text, find a good breaking point
     if (endIndex < text.length) {
-      // Try to break at paragraph
+      // Try to break at paragraph or sentence
       const paragraphBreak = text.lastIndexOf("\n\n", endIndex);
       if (paragraphBreak > currentIndex && paragraphBreak > endIndex - 200) {
         endIndex = paragraphBreak;
       } else {
-        // Try to break at sentence
         const sentenceBreak = Math.max(
           text.lastIndexOf(". ", endIndex),
           text.lastIndexOf("! ", endIndex),
-          text.lastIndexOf("? ", endIndex),
+          text.lastIndexOf("? ", endIndex)
         );
         if (sentenceBreak > currentIndex && sentenceBreak > endIndex - 100) {
-          endIndex = sentenceBreak + 1; // Include the period
+          endIndex = sentenceBreak + 1;
         }
       }
     }
@@ -204,45 +170,42 @@ export function processDocumentContent(content: string): string {
  */
 export function rankSearchResultsByRelevance(
   query: string,
-  searchResults: InternalDocSearchHit[],
+  searchResults: InternalDocSearchHit[]
 ): InternalDocSearchHit[] {
-  if (!searchResults || searchResults.length === 0) {
-    return [];
-  }
+  if (!searchResults || searchResults.length === 0) return [];
 
   const queryWords = query
     .toLowerCase()
     .split(/\s+/)
-    .filter((word) => word.length > 2);
+    .filter(word => word.length > 2);
 
-  // Score each result based on multiple factors
-  const scoredResults = searchResults.map((result) => {
+  const scoredResults = searchResults.map(result => {
     let score = 0;
 
-    // Basic text matching in title
+    // Title matching
     if (result.hierarchy?.lvl0) {
       const title = result.hierarchy.lvl0.toLowerCase();
-      queryWords.forEach((word) => {
+      queryWords.forEach(word => {
         if (title.includes(word)) score += 2;
       });
     }
 
-    // Basic text matching in subtitle
+    // Subtitle matching
     if (result.hierarchy?.lvl1) {
       const subtitle = result.hierarchy.lvl1.toLowerCase();
-      queryWords.forEach((word) => {
+      queryWords.forEach(word => {
         if (subtitle.includes(word)) score += 1.5;
       });
     }
 
-    // Text matching in content snippets
+    // Content snippet matching
     if (result._snippetResult?.content?.value) {
       const snippet = result._snippetResult.content.value.toLowerCase();
-      queryWords.forEach((word) => {
+      queryWords.forEach(word => {
         if (snippet.includes(word)) score += 1;
       });
 
-      // Bonus for highlighted matches in snippets (Algolia marks these with <em>)
+      // Bonus for highlighted matches
       if (result._snippetResult.content.value.includes("<em>")) {
         score += 2;
       }
@@ -256,8 +219,9 @@ export function rankSearchResultsByRelevance(
     return { result, score };
   });
 
-  // Sort by score (highest first)
-  return scoredResults.sort((a, b) => b.score - a.score).map((item) => item.result);
+  return scoredResults
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.result);
 }
 
 /**
@@ -265,26 +229,22 @@ export function rankSearchResultsByRelevance(
  */
 export async function retrieveDocumentContent(
   searchResults: InternalDocSearchHit[],
-  query: string,
+  query: string
 ): Promise<string[]> {
-  if (!searchResults || searchResults.length === 0) {
-    return [];
-  }
+  if (!searchResults || searchResults.length === 0) return [];
 
-  // Rank results by relevance to the query
+  // Rank results by relevance
   const rankedResults = rankSearchResultsByRelevance(query, searchResults);
-
-  // Limit the number of documents to fetch to avoid performance issues
   const topResults = rankedResults.slice(0, 4);
 
   // Fetch content from each document URL in parallel
-  const contentPromises = topResults.map((result) => fetchDocumentContent(result.url));
+  const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
   const contents = await Promise.all(contentPromises);
 
-  // Process and chunk the content
+  // Process and return non-empty content
   return contents
-    .filter((content) => content.trim() !== "")
-    .map((content) => {
+    .filter(content => content.trim() !== "")
+    .map(content => {
       // Process the content to enhance the extraction of key information
       const processedContent = processDocumentContent(content);
 
@@ -363,12 +323,10 @@ export function createSystemPrompt(options?: {
   systemPrompt?: string;
   siteName?: string;
 }): string {
-  // If a custom system prompt is provided, use it
   if (options?.systemPrompt) {
     return options.systemPrompt;
   }
 
-  // Otherwise use the default template with optional site name
   const siteName = options?.siteName || 'Documentation';
   
   return `You are a helpful ${siteName} assistant. Your goal is to provide detailed, accurate information about ${siteName} based on the documentation provided.
@@ -397,12 +355,12 @@ export function createUserPrompt(
     highlightCode?: boolean;
   }
 ): string {
-  // If a custom user prompt is provided, substitute variables and return it
+  // Use custom prompt template if provided
   if (options?.userPrompt) {
     let customPrompt = options.userPrompt;
-    
-    // Build document content to substitute
     const maxDocs = options.maxDocuments || 4;
+    
+    // Prepare document content for substitution
     const contextContent = documentContents
       .slice(0, maxDocs)
       .map((content, index) => {
@@ -412,7 +370,7 @@ export function createUserPrompt(
       })
       .join("\n\n");
       
-    // Build source references to substitute
+    // Prepare source references for substitution
     const formattedResults = searchResults
       .slice(0, maxDocs)
       .map((result, index) => {
@@ -422,17 +380,17 @@ export function createUserPrompt(
       })
       .join("\n");
     
-    // Replace tokens in the custom prompt template
+    // Replace tokens in the template
     return customPrompt
       .replace(/\{query\}/g, query)
       .replace(/\{context\}/g, contextContent)
       .replace(/\{sources\}/g, formattedResults);
   }
 
-  // Otherwise use the default format
+  // Use default prompt format
   const maxDocs = options?.maxDocuments || 4;
   
-  // Format search results with their titles and URLs for reference
+  // Format search results with titles and URLs
   const formattedResults = searchResults
     .slice(0, maxDocs)
     .map((result, index) => {
@@ -442,7 +400,7 @@ export function createUserPrompt(
     })
     .join("\n");
 
-  // Combine the retrieved content with source information
+  // Prepare the content with source information
   const contextContent = documentContents
     .slice(0, maxDocs)
     .map((content, index) => {

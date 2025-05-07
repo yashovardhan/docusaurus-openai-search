@@ -1,61 +1,45 @@
-# Contributing to Docusaurus AI Search
+# Contributing to Docusaurus OpenAI Search
 
-Thank you for considering contributing to Docusaurus AI Search! This document provides guidelines and instructions to help you get started.
-
-## Code of Conduct
-
-Please be respectful and considerate of others when contributing to this project.
-
-## Getting Started
-
-1. Fork the repository
-2. Clone your fork locally
-3. Install dependencies with `npm install`
-4. Make your changes
-5. Run tests with `npm test`
-6. Commit your changes
-7. Push to your fork
-8. Submit a pull request
+Thank you for contributing to this project! Here's how to get started:
 
 ## Development
 
-### Setting up the development environment
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/your-username/docusaurus-openai-search.git`
+3. Install dependencies: `npm install`
+4. Make your changes
+5. Build the project: `npm run build`
 
-```bash
-# Install dependencies
-npm install
+## Testing Changes
 
-# Build the package
-npm run build
+You can test your changes in a local Docusaurus project by:
 
-# For local testing, you can link the package
-npm link
-```
+1. Building the project with `npm run build`
+2. Linking it to your test project: 
+   ```
+   cd /path/to/docusaurus-openai-search
+   npm link
+   cd /path/to/your-docusaurus-project
+   npm link docusaurus-openai-search
+   ```
 
-### Testing with a Docusaurus site
+## Submitting Changes
 
-You can test your changes with a Docusaurus site:
+1. Make sure your code passes linting: `npm run lint`
+2. Push to your fork
+3. Submit a pull request
 
-```bash
-# In the example Docusaurus site
-npm link docusaurus-openai-search
-```
+## Code Style Guidelines
+
+- Follow existing code style
+- Use TypeScript for all new code
+- Add JSDoc comments to exported functions and types
+- Keep components modular and focused on a single responsibility
 
 ## Pull Request Process
 
-1. Ensure your code follows the project's style guidelines
-2. Update documentation as needed
-3. Your pull request should target the `main` branch
-4. Provide a clear description of the changes you've made
-5. A maintainer will review your PR and provide feedback
+1. Ensure your code builds successfully
+2. Update the README.md if needed
+3. Make sure your PR description clearly describes the changes and their purpose
 
-## Coding Standards
-
-- Use TypeScript for all new code
-- Follow the existing coding style
-- Write clear, descriptive commit messages
-- Include unit tests for new features
-
-## License
-
-By contributing to Docusaurus AI Search, you agree that your contributions will be licensed under the project's MIT license. 
+Thank you for your contributions! 

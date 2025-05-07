@@ -19,7 +19,7 @@ import '../styles.css';
 // Import DocSearchModal dynamically to reduce initial bundle size
 let DocSearchModal: any = null;
 
-// Default translations if Docusaurus doesn't provide them
+// Default translations
 const defaultTranslations = {
   button: {
     buttonText: 'Search',
@@ -77,11 +77,7 @@ async function importDocSearchModalIfNeeded() {
   });
 }
 
-interface NavigatorProps {
-  externalUrlRegex?: string;
-}
-
-function useNavigator({ externalUrlRegex }: NavigatorProps) {
+function useNavigator({ externalUrlRegex }: { externalUrlRegex?: string }) {
   const history = useHistory();
   
   return {
@@ -107,11 +103,7 @@ function useSearchClient() {
   );
 }
 
-interface TransformItemsProps {
-  transformItems?: (items: any[]) => any[];
-}
-
-function useTransformItems({ transformItems }: TransformItemsProps) {
+function useTransformItems({ transformItems }: { transformItems?: (items: any[]) => any[] }) {
   const processSearchResultUrl = useSearchResultUrlProcessor();
   
   return useCallback((items: any[]) => {
@@ -126,22 +118,18 @@ function useTransformItems({ transformItems }: TransformItemsProps) {
   }, [processSearchResultUrl, transformItems]);
 }
 
-interface SearchParametersProps {
-  contextualSearch?: boolean;
-  searchParameters?: {
-    facetFilters?: string[] | string[][];
-    [key: string]: any;
-  };
-}
-
-function useSearchParameters({ contextualSearch, searchParameters }: SearchParametersProps) {
+function useSearchParameters({ 
+  contextualSearch, 
+  searchParameters 
+}: { 
+  contextualSearch?: boolean; 
+  searchParameters?: any; 
+}) {
   const contextualSearchFacetFilters = useAlgoliaContextualFacetFilters();
   
-  // Merge filters when contextual search is enabled
   let facetFilters = searchParameters?.facetFilters || [];
   
   if (contextualSearch && contextualSearchFacetFilters.length > 0) {
-    // @ts-ignore - Type mismatch with facetFilters
     facetFilters = Array.isArray(facetFilters[0]) 
       ? [...facetFilters, contextualSearchFacetFilters]
       : [facetFilters, contextualSearchFacetFilters].flat();
@@ -153,17 +141,13 @@ function useSearchParameters({ contextualSearch, searchParameters }: SearchParam
   };
 }
 
-interface ResultsFooterProps {
-  state: {
-    query: string;
-    context: {
-      nbHits: number;
-    };
-  };
-  onClose: () => void;
-}
-
-function ResultsFooter({ state, onClose }: ResultsFooterProps) {
+function ResultsFooter({ 
+  state, 
+  onClose 
+}: { 
+  state: any; 
+  onClose: () => void; 
+}) {
   const createSearchLink = useSearchLinkCreator();
   
   return (
@@ -186,19 +170,8 @@ function ResultsFooter({ state, onClose }: ResultsFooterProps) {
   );
 }
 
-interface ResultsFooterComponentProps {
-  closeModal: () => void;
-}
-
-function useResultsFooterComponent({ closeModal }: ResultsFooterComponentProps) {
-  return useCallback(
-    ({ state }: { state: any }) => <ResultsFooter state={state} onClose={closeModal} />,
-    [closeModal],
-  );
-}
-
 /**
- * Docusaurus AI Search component - combines search and AI-powered answers
+ * Docusaurus AI Search component
  */
 export function DocusaurusAISearch({
   algoliaConfig,
@@ -231,9 +204,6 @@ export function DocusaurusAISearch({
   const [aiQuery, setAiQuery] = useState('');
   const [searchResults, setSearchResults] = useState<InternalDocSearchHit[]>([]);
   
-  // Last search state for better result access
-  const [lastSearchState, setLastSearchState] = useState<any>(null);
-  
   const prepareSearchContainer = useCallback(() => {
     if (!searchContainer.current) {
       const divElement = document.createElement('div');
@@ -260,7 +230,6 @@ export function DocusaurusAISearch({
     setSearchResults(results);
     setShowAIModal(true);
     
-    // Track query if analytics function is provided in aiConfig
     if (aiConfig?.onAIQuery) {
       aiConfig.onAIQuery(query, true);
     }
@@ -269,11 +238,9 @@ export function DocusaurusAISearch({
   const handleInput = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
-        // Ignore browser's native Ctrl+F
         return;
       }
       
-      // Prevents duplicate key insertion
       event.preventDefault();
       setInitialQuery(event.key);
       openModal();
@@ -281,11 +248,11 @@ export function DocusaurusAISearch({
     [openModal],
   );
   
-  const resultsFooterComponent = useResultsFooterComponent({
-    closeModal,
-  });
+  const resultsFooterComponent = useCallback(
+    ({ state }: { state: any }) => <ResultsFooter state={state} onClose={closeModal} />,
+    [closeModal],
+  );
   
-  // Setup for DocSearch modal keyboard events
   useDocSearchKeyboardEvents({
     isOpen,
     onOpen: openModal,
@@ -294,7 +261,6 @@ export function DocusaurusAISearch({
     searchButtonRef,
   });
   
-  // Effect to add AI button to the search modal
   useEffect(() => {
     if (isOpen && aiConfig?.enabled !== false) {
       const timer = setTimeout(() => {
@@ -304,24 +270,19 @@ export function DocusaurusAISearch({
         if (searchInput && searchDropdown) {
           let aiButtonAdded = false;
           
-          // Function to add AI button
           const addAiButton = (query: string) => {
-            // Skip if query is too short or already added button
             if (!query || query.trim().length < 3) {
               return;
             }
             
-            // Remove existing AI button if any
             const existingButton = document.querySelector('.ai-search-header');
             if (existingButton) {
               existingButton.remove();
             }
             
-            // Create new AI button
             const aiButton = document.createElement('div');
             aiButton.className = 'ai-search-header';
             
-            // Use custom text if provided in config
             const buttonText = aiConfig?.ui?.aiButtonText || `Ask AI about "${query}"`;
             const buttonAriaLabel = aiConfig?.ui?.aiButtonAriaLabel || 'Ask AI about this question';
             
@@ -337,19 +298,16 @@ export function DocusaurusAISearch({
               </button>
             `;
             
-            // Insert the button at the top of search results
             const resultsContainer = document.querySelector('.DocSearch-Dropdown-Container');
             if (resultsContainer && resultsContainer.parentNode) {
               resultsContainer.parentNode.insertBefore(aiButton, resultsContainer);
               aiButtonAdded = true;
               
-              // Add click event listener
               const button = aiButton.querySelector('button');
               if (button) {
                 button.addEventListener('click', (e) => {
                   e.preventDefault();
                   
-                  // Capture current search results
                   const searchResultItems = Array.from(
                     document.querySelectorAll('.DocSearch-Hit')
                   ).map((hit) => {
@@ -357,7 +315,6 @@ export function DocusaurusAISearch({
                     const titleEl = hit.querySelector('.DocSearch-Hit-title');
                     const pathEl = hit.querySelector('.DocSearch-Hit-path');
                     
-                    // Try to extract highlighted content
                     let snippet = '';
                     const contentEls = hit.querySelectorAll('.DocSearch-Hit-content mark');
                     contentEls.forEach((mark) => {
@@ -376,13 +333,15 @@ export function DocusaurusAISearch({
                           value: snippet || '',
                         },
                       },
+                      // Add required fields for InternalDocSearchHit
+                      objectID: `result-${Math.random().toString(36).substring(2)}`,
+                      type: 'lvl1',
+                      _highlightResult: {},
                     };
                   });
                   
-                  // @ts-ignore - Type mismatch with search result items
-                  const rankedResults = rankSearchResultsByRelevance(query, searchResultItems);
+                  const rankedResults = rankSearchResultsByRelevance(query, searchResultItems as InternalDocSearchHit[]);
                   
-                  // Show AI modal with results
                   handleAskAI(query, rankedResults);
                   closeModal();
                 });
@@ -390,7 +349,6 @@ export function DocusaurusAISearch({
             }
           };
           
-          // Observe search results for changes
           const observer = new MutationObserver(() => {
             const hasResults = document.querySelector('.DocSearch-Hit');
             const query = searchInput.value.trim();
@@ -400,7 +358,6 @@ export function DocusaurusAISearch({
             }
           });
           
-          // Start observing search results
           observer.observe(searchDropdown, {
             childList: true,
             subtree: true,
@@ -408,7 +365,6 @@ export function DocusaurusAISearch({
             characterData: false,
           });
           
-          // Also check when user changes search input
           const handleNewSearch = () => {
             setTimeout(() => {
               const hasResults = document.querySelector('.DocSearch-Hit');
@@ -426,10 +382,8 @@ export function DocusaurusAISearch({
             }, 100); 
           };
           
-          // Track input field interactions
           searchInput.addEventListener('click', handleNewSearch);
           
-          // Handle keyboard input with debouncing
           let typingTimer: NodeJS.Timeout | null = null;
           const doneTyping = () => {
             aiButtonAdded = false;
@@ -462,7 +416,6 @@ export function DocusaurusAISearch({
   return (
     <>
       <Head>
-        {/* This hint allows the browser to preconnect to Algolia */}
         {appId && (
           <link
             rel="preconnect"
@@ -503,10 +456,6 @@ export function DocusaurusAISearch({
           indexName={indexName}
           apiKey={apiKey}
           appId={appId}
-          // Store search state for AI context
-          onStateChange={(state: any) => {
-            setLastSearchState(state);
-          }}
         />,
         searchContainer.current
       )}
@@ -514,8 +463,8 @@ export function DocusaurusAISearch({
       {showAIModal && (
         <AISearchModal
           query={aiQuery}
-          searchResults={searchResults}
           onClose={() => setShowAIModal(false)}
+          searchResults={searchResults}
           config={aiConfig}
         />
       )}
