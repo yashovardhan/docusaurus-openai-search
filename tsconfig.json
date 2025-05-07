@@ -21,13 +21,14 @@
         ]
     },
     "include": [
-        "src/**/*.js"
+        "src/**/*.js",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.jsx",
+        "src/**/*.css"
     ],
     "exclude": [
         "node_modules",
-        "dist",
-        "src/**/*.tsx",
-        "src/**/*.ts",
-        "src/**/*.jsx"
+        "dist"
     ]
 }

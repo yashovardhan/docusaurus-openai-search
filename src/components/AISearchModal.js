@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { OpenAI } from "openai";
 import { marked } from "marked";
+import "../styles/aiSearch.css";
 import {
   retrieveDocumentContent,
   generateFallbackContent,

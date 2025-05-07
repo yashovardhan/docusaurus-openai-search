@@ -68,23 +68,11 @@ function importDocSearchModalIfNeeded() {
   return Promise.all([
     import("@docsearch/react/modal"),
     import("@docsearch/react/style"),
-    // Don't import CSS this way
-    // import("../styles/aiSearch.css"),
+    import("../styles/aiSearch.css"),
   ]).then(([{ DocSearchModal: Modal }]) => {
     DocSearchModal = Modal;
     
-    // Manually inject the CSS if we're in a browser environment
-    if (typeof document !== 'undefined') {
-      // Check if our CSS is already loaded
-      if (!document.getElementById('docusaurus-openai-search-css')) {
-        const link = document.createElement('link');
-        link.id = 'docusaurus-openai-search-css';
-        link.rel = 'stylesheet';
-        link.type = 'text/css';
-        link.href = '/_assets/docusaurus-openai-search/styles/aiSearch.css';
-        document.head.appendChild(link);
-      }
-    }
+    // CSS is now directly imported above, no need for manual injection
   });
 }
 

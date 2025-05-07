@@ -66,27 +66,6 @@ Once configured, your Docusaurus site will use the AI-enhanced search bar. Users
 
 ## Troubleshooting
 
-### CSS Loading Issues
-
-If you encounter styling issues, there are two ways to load the CSS:
-
-#### Option 1: Use the plugin (recommended)
-Register the plugin as shown in the Configuration section above.
-
-#### Option 2: Import CSS manually
-If you prefer to import the CSS manually, you can add this to your custom theme component:
-
-```js
-// src/theme/SearchBar/index.js
-import React from 'react';
-import { AiEnhancedSearchBar } from 'docusaurus-openai-search';
-import 'docusaurus-openai-search/dist/styles/aiSearch.css';
-
-export default function SearchBar(props) {
-  return <AiEnhancedSearchBar {...props} />;
-}
-```
-
 ### Module not found errors
 
 If you encounter errors like:
