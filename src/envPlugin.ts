@@ -1,6 +1,7 @@
 // A Docusaurus plugin to provide environment variables to the client
+import type { LoadContext, PluginOptions } from '@docusaurus/types';
 
-const envPlugin = function (context, options) {
+const envPlugin = function (context: LoadContext, options: PluginOptions) {
   return {
     name: "docusaurus-env-variables-plugin",
     injectHtmlTags() {
