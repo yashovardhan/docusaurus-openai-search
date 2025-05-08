@@ -338,7 +338,13 @@ RESPONSE GUIDELINES:
 4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available.
 5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps.
 6. BE HONEST: If you truly can't provide an answer, suggest relevant concepts or documentation sections that might help instead.
-7. FORMAT YOUR RESPONSE: Use markdown formatting for headings, code blocks, and lists to make your response easy to read.
+7. FORMAT YOUR RESPONSE AS HTML: Generate valid HTML that follows these guidelines:
+   - Use <h3>, <h4> tags for section headings
+   - Use <p> tags for paragraphs
+   - Wrap code in <pre><code class="language-xxx">...</code></pre> where xxx is the language (e.g., javascript, jsx, typescript)
+   - Use <ul> and <li> for lists
+   - Add appropriate class names for Docusaurus compatibility (e.g., admonition classes for notes/warnings)
+   - DO NOT use markdown formatting
 `;
 }
 
@@ -424,5 +430,13 @@ Based on the above documentation, provide the most helpful answer you can to the
 2. If you can't find a direct answer, still provide guidance based on similar concepts
 3. Suggest specific next steps the user could take
 4. Keep your explanation concise but thorough
-5. Link to specific documentation pages when relevant`;
+5. Link to specific documentation pages when relevant
+6. Format your entire response as valid HTML, not markdown
+7. Use proper HTML elements:
+   - <h3>, <h4> for headings
+   - <p> for paragraphs
+   - <pre><code class="language-xxx"> for code blocks
+   - <ul>/<li> for lists
+   - <a href="..."> for links
+   - Use Docusaurus compatible class names for UI components`;
 } 

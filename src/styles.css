@@ -1,17 +1,23 @@
 /* AI-enhanced Search Bar Styles - Minimized version */
 .docusaurus-openai-search {
+  /* Use Docusaurus font family and color */
   font-family: var(--ifm-font-family-base);
   color: var(--ifm-font-color-base);
+  
+  /* Base spacing units - can be customized by users */
+  --ai-search-unit-xs: 4px;
+  --ai-search-unit-sm: 8px;
+  --ai-search-unit-md: 12px;
+  --ai-search-unit-lg: 16px;
+  --ai-search-unit-xl: 24px;
+  --ai-search-unit-xxl: 32px;
 }
 
 /* AI Search Header */
 .docusaurus-openai-search .ai-search-header {
   display: flex;
   justify-content: center;
-  width: 100%;
-  padding: var(--ifm-spacing-vertical) var(--ifm-spacing-horizontal);
-  border-bottom: 1px solid var(--ifm-color-emphasis-300);
-  background: var(--ifm-background-surface-color);
+  padding: var(--ai-search-unit-md) 0;
 }
 
 .docusaurus-openai-search .ai-search-button-header {
@@ -19,7 +25,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: calc(var(--ifm-button-padding-vertical) * 1.2) calc(var(--ifm-button-padding-horizontal) * 1.2);
+  padding: var(--ai-search-unit-md) var(--ai-search-unit-sm);
   border-radius: var(--ifm-button-border-radius);
   border: none;
   background: var(--docsearch-highlight-color, var(--ifm-color-primary));
@@ -28,312 +34,14 @@
   font-size: var(--ifm-font-size-base);
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: var(--ifm-global-shadow-md);
-  letter-spacing: 0.01em;
 }
 
 .docusaurus-openai-search .ai-search-button-header:hover {
-  background: var(--docsearch-highlight-color, var(--ifm-color-primary));
   opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: var(--ifm-global-shadow-lg);
-}
-
-.docusaurus-openai-search .ai-search-button-header:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .docusaurus-openai-search .ai-search-button-header svg {
-  margin-right: 12px;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  opacity: 0.9;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
-}
-
-/* AI Modal Styles */
-.docusaurus-openai-search .ai-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: var(--docsearch-container-background, var(--ifm-overlay-color));
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: var(--ifm-z-index-overlay);
-  padding: var(--ifm-spacing-lg);
-  backdrop-filter: blur(2px);
-}
-
-@keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.docusaurus-openai-search .ai-modal-content {
-  background-color: var(--docsearch-modal-background, var(--ifm-background-color));
-  border-radius: var(--ifm-card-border-radius);
-  box-shadow: var(--docsearch-modal-shadow, 0 6px 30px rgba(0, 0, 0, 0.12));
-  width: 100%;
-  max-width: 850px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  color: var(--ifm-font-color-base);
-  margin: var(--ifm-spacing-lg) 0;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  animation: modal-appear 0.2s ease forwards;
-}
-
-.docusaurus-openai-search .ai-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(var(--ifm-spacing-vertical) * 1.2) calc(var(--ifm-spacing-horizontal) * 1.2);
-  border-bottom: 1px solid var(--docsearch-separator-color, var(--ifm-color-emphasis-200));
-  margin-bottom: var(--ifm-spacing-xs);
-  background-color: var(--docsearch-footer-background, var(--ifm-background-surface-color));
-}
-
-.docusaurus-openai-search .ai-modal-header h3 {
-  margin: 0;
-  font-size: var(--ifm-h4-font-size);
-  font-weight: var(--ifm-font-weight-bold);
-  padding: var(--ifm-spacing-xs) var(--ifm-spacing-sm);
-  color: var(--docsearch-heading-color, var(--ifm-heading-color));
-}
-
-.docusaurus-openai-search .ai-modal-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--docsearch-muted-color, var(--ifm-color-secondary-darkest));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  transition: all var(--ifm-transition-fast);
-  font-size: 24px;
-  font-weight: 300;
-  padding: 0;
-}
-
-.docusaurus-openai-search .ai-modal-close:hover {
-  background-color: var(--docsearch-hit-active-color, var(--ifm-color-emphasis-200));
-  color: var(--ifm-color-emphasis-700);
-}
-
-.docusaurus-openai-search .ai-modal-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-.docusaurus-openai-search .ai-question {
-  padding: calc(var(--ifm-spacing-vertical) * 1.5) calc(var(--ifm-spacing-horizontal) * 1.5);
-  background-color: var(--docsearch-highlight-bg, var(--ifm-color-emphasis-100));
-  border-bottom: 1px solid var(--docsearch-separator-color, var(--ifm-color-emphasis-200));
-  font-weight: var(--ifm-font-weight-semibold);
-  margin-bottom: var(--ifm-spacing-sm);
-  font-size: calc(var(--ifm-font-size-base) * 1.05);
-}
-
-.docusaurus-openai-search .ai-answer {
-  padding: calc(var(--ifm-spacing-vertical) * 1.5) calc(var(--ifm-spacing-horizontal) * 1.5);
-  overflow-y: auto;
-  flex: 1;
-}
-
-.docusaurus-openai-search .ai-response {
-  line-height: var(--ifm-line-height-base, 1.6);
-  margin: var(--ifm-spacing-sm) 0;
-}
-
-.docusaurus-openai-search .ai-response-text {
-  max-width: 100%;
-  overflow-x: auto;
-  padding: var(--ifm-spacing-sm);
-}
-
-.docusaurus-openai-search .ai-response-text code {
-  font-size: var(--ifm-code-font-size);
-  padding: var(--ifm-code-padding-vertical) var(--ifm-code-padding-horizontal);
-  border-radius: var(--ifm-code-border-radius);
-  background-color: var(--ifm-code-background);
-  color: var(--ifm-code-color);
-  font-family: var(--ifm-font-family-monospace);
-  margin: 0 var(--ifm-spacing-xs);
-}
-
-.docusaurus-openai-search .ai-response-text pre {
-  background-color: var(--ifm-pre-background);
-  border-radius: var(--ifm-pre-border-radius);
-  padding: calc(var(--ifm-pre-padding) * 1.2);
-  margin: calc(var(--ifm-spacing-vertical) * 1.2) 0;
-  border: 1px solid var(--ifm-color-emphasis-200);
-}
-
-.docusaurus-openai-search .ai-response-text pre code {
-  background-color: transparent;
-  padding: 0;
-  font-size: 0.85em;
-  color: var(--ifm-pre-color);
-  border: none;
-  margin: 0;
-}
-
-.docusaurus-openai-search .ai-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: calc(var(--ifm-spacing-xl) * 1.2) var(--ifm-spacing-xl);
-  text-align: center;
-  color: var(--ifm-color-secondary-darkest);
-  margin: var(--ifm-spacing-lg) 0;
-}
-
-.docusaurus-openai-search .ai-loading-spinner {
-  display: inline-block;
-  width: 50px;
-  height: 50px;
-  border: 3px solid var(--ifm-color-emphasis-200);
-  border-radius: 50%;
-  border-top-color: var(--docsearch-highlight-color, var(--ifm-color-primary));
-  animation: ai-spin 1s ease-in-out infinite;
-  margin-bottom: calc(var(--ifm-spacing-vertical) * 1.5);
-}
-
-@keyframes ai-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.docusaurus-openai-search .ai-error {
-  padding: var(--ifm-spacing-lg);
-  text-align: center;
-  color: var(--ifm-font-color-base);
-  margin: var(--ifm-spacing-lg) 0;
-}
-
-.docusaurus-openai-search .error-message {
-  margin-bottom: var(--ifm-spacing-vertical);
-  padding: var(--ifm-spacing-vertical);
-  background-color: var(--ifm-color-danger-lighter);
-  border-radius: var(--ifm-card-border-radius);
-  border: 1px solid var(--ifm-color-danger-light);
-  color: var(--ifm-color-danger);
-}
-
-.docusaurus-openai-search .ai-error-actions {
-  margin: var(--ifm-spacing-vertical) 0;
-}
-
-.docusaurus-openai-search .ai-retry-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ifm-spacing-horizontal-sm);
-  background-color: var(--ifm-color-primary);
-  color: var(--ifm-color-white);
-  border: none;
-  border-radius: var(--ifm-button-border-radius);
-  padding: var(--ifm-button-padding-vertical) var(--ifm-button-padding-horizontal);
-  font-size: var(--ifm-font-size-base);
-  cursor: pointer;
-  transition: background-color var(--ifm-transition-fast);
-}
-
-.docusaurus-openai-search .ai-retry-button:hover {
-  background-color: var(--ifm-color-primary-darker);
-}
-
-.docusaurus-openai-search .ai-search-links {
-  margin-top: var(--ifm-spacing-lg);
-  text-align: left;
-  padding: 0 var(--ifm-spacing-md);
-}
-
-.docusaurus-openai-search .ai-search-links p {
-  margin-bottom: var(--ifm-spacing-md);
-  padding: var(--ifm-spacing-xs) 0;
-  font-weight: var(--ifm-font-weight-semibold);
-}
-
-.docusaurus-openai-search .ai-search-links ul {
-  list-style-type: none;
-  padding-left: var(--ifm-spacing-sm);
-  margin: var(--ifm-spacing-md) 0;
-}
-
-.docusaurus-openai-search .ai-search-links li {
-  margin-bottom: var(--ifm-spacing-md);
-  padding: var(--ifm-spacing-xs) 0;
-}
-
-.docusaurus-openai-search .ai-search-links a {
-  color: var(--ifm-link-color);
-  text-decoration: none;
-}
-
-.docusaurus-openai-search .ai-search-links a:hover {
-  text-decoration: underline;
-  color: var(--ifm-link-hover-color);
-}
-
-.docusaurus-openai-search .ai-notice {
-  margin-top: var(--ifm-spacing-vertical);
-  padding: var(--ifm-alert-padding-vertical);
-  background-color: var(--ifm-color-warning-lightest);
-  border-left: 4px solid var(--ifm-color-warning-light);
-  border-radius: var(--ifm-alert-border-radius);
-}
-
-html[data-theme='dark'] .docusaurus-openai-search .ai-notice {
-  background-color: var(--ifm-color-warning-darkest);
-  border-left-color: var(--ifm-color-warning-dark);
-}
-
-.docusaurus-openai-search .ai-notice p {
-  margin-top: 0;
-  margin-bottom: var(--ifm-spacing-vertical-sm);
-}
-
-.docusaurus-openai-search .ai-notice ul {
-  margin-bottom: 0;
-}
-
-/* Search footer styling */
-.docusaurus-openai-search .ai-search-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--ifm-spacing-vertical) var(--ifm-spacing-horizontal);
-  border-top: 1px solid var(--ifm-color-emphasis-200);
-}
-
-.docusaurus-openai-search .ai-search-footer-left {
-  font-size: var(--ifm-font-size-sm);
-}
-
-.docusaurus-openai-search .ai-search-see-all {
-  color: var(--ifm-color-primary);
-  text-decoration: none;
-}
-
-.docusaurus-openai-search .ai-search-see-all:hover {
-  text-decoration: underline;
+  margin-right: var(--ai-search-unit-sm);
 }
 
 /* Z-index fixes */
@@ -360,27 +68,190 @@ html[data-theme='dark'] .docusaurus-openai-search .ai-notice {
   position: relative;
 }
 
-/* Dark theme tweaks */
-:root[data-theme='dark'] .docusaurus-openai-search .ai-search-button-header {
-  background: var(--docsearch-highlight-color, var(--ifm-color-primary-darker));
+/* AI Modal Styles */
+.docusaurus-openai-search .ai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--docsearch-container-background, rgba(0, 0, 0, 0.4));
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: var(--ai-search-unit-xl);
+  backdrop-filter: blur(2px);
 }
 
-:root[data-theme='dark'] .docusaurus-openai-search .ai-search-button-header:hover {
-  background: var(--docsearch-highlight-color, var(--ifm-color-primary-darkest));
-  opacity: 0.9;
+.docusaurus-openai-search .ai-modal-content {
+  background-color: var(--docsearch-modal-background, var(--ifm-background-color));
+  border-radius: var(--ifm-card-border-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 850px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: var(--ai-search-unit-xl) 0;
 }
 
-:root[data-theme='dark'] .docusaurus-openai-search .ai-question {
-  background: var(--ifm-color-emphasis-200);
+.docusaurus-openai-search .ai-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  background-color: var(--ifm-background-surface-color);
 }
 
-:root[data-theme='dark'] .docusaurus-openai-search .ai-error {
-  background: rgba(235, 87, 87, 0.2);
+.docusaurus-openai-search .ai-modal-header h3 {
+  margin: 0;
+  font-size: var(--ifm-h4-font-size);
+  font-weight: var(--ifm-font-weight-bold);
+  padding: var(--ai-search-unit-xs) var(--ai-search-unit-sm);
+  color: var(--ifm-color-emphasis-900);
 }
 
-:root[data-theme='dark'] .docusaurus-openai-search .error-message {
-  background-color: var(--ifm-color-danger-darker);
-  border-color: var(--ifm-color-danger-dark);
+.docusaurus-openai-search .ai-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ifm-color-secondary-darkest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: all var(--ifm-transition-fast);
+  font-size: 24px;
+  padding: 0;
+}
+
+.docusaurus-openai-search .ai-modal-close:hover {
+  background-color: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-700);
+}
+
+.docusaurus-openai-search .ai-modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.docusaurus-openai-search .ai-question {
+  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  background-color: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+.docusaurus-openai-search .ai-answer {
+  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.docusaurus-openai-search .ai-response {
+  margin: var(--ai-search-unit-md) 0;
+}
+
+.docusaurus-openai-search .ai-response-text {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.docusaurus-openai-search .ai-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ai-search-unit-xxl) var(--ai-search-unit-xxl) calc(var(--ai-search-unit-xxl) * 2);
+  text-align: center;
+  color: var(--ifm-color-secondary-darkest);
+  margin: var(--ai-search-unit-xxl);
+}
+
+.docusaurus-openai-search .ai-loading-spinner {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--ifm-color-emphasis-200);
+  border-radius: 50%;
+  border-top-color: var(--ifm-color-primary);
+  animation: ai-spin 1s ease-in-out infinite;
+  margin-bottom: var(--ai-search-unit-md);
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.docusaurus-openai-search .ai-error {
+  padding: var(--ai-search-unit-xl);
+  text-align: center;
+  margin: var(--ai-search-unit-xl) 0;
+}
+
+/* Error message styling removed, using Docusaurus alert classes instead */
+
+.docusaurus-openai-search .ai-error-actions {
+  margin: var(--ai-search-unit-md) 0;
+}
+
+/* Custom button styling removed, using Docusaurus button classes instead */
+
+.docusaurus-openai-search .ai-search-links {
+  margin-top: var(--ai-search-unit-xl);
+  text-align: left;
+  padding: 0 var(--ai-search-unit-lg);
+}
+
+.docusaurus-openai-search .ai-search-links ul {
+  list-style-type: none;
+  padding-left: var(--ai-search-unit-sm);
+  margin: var(--ai-search-unit-lg) 0;
+}
+
+.docusaurus-openai-search .ai-search-links li {
+  margin-bottom: var(--ai-search-unit-lg);
+  padding: var(--ai-search-unit-xs) 0;
+}
+
+/* Notice styling removed, using Docusaurus admonition classes instead */
+
+/* Search footer styling */
+.docusaurus-openai-search .ai-search-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.docusaurus-openai-search .ai-search-footer-left {
+  font-size: var(--ifm-h7-font-size);
+}
+
+.docusaurus-openai-search .ai-search-see-all {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+
+.docusaurus-openai-search .ai-search-see-all:hover {
+  text-decoration: underline;
+}
+
+.docusaurus-openai-search .ai-modal-footer {
+  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-secondary-darkest);
+  font-size: var(--ifm-h7-font-size);
+  text-align: center;
+  background-color: var(--ifm-background-surface-color);
+  margin-top: var(--ai-search-unit-lg);
 }
 
 /* Responsive Adjustments */
@@ -395,154 +266,6 @@ html[data-theme='dark'] .docusaurus-openai-search .ai-notice {
   .docusaurus-openai-search .ai-modal-overlay {
     padding: 0;
   }
-  
-  .docusaurus-openai-search .ai-modal-header {
-    padding: 16px 20px;
-  }
-  
-  .docusaurus-openai-search .ai-modal-close {
-    width: 44px;
-    height: 44px;
-    font-size: 28px;
-    margin-right: -4px;
-  }
-  
-  .docusaurus-openai-search .ai-modal-header h3 {
-    font-size: var(--ifm-h3-font-size);
-    padding: 2px 0;
-  }
-  
-  .docusaurus-openai-search .ai-question {
-    padding: 16px 20px;
-    font-size: var(--ifm-font-size-base);
-  }
-  
-  .docusaurus-openai-search .ai-answer {
-    padding: 16px 20px;
-  }
-  
-  .docusaurus-openai-search .ai-search-header {
-    padding: 16px 20px;
-  }
-  
-  .docusaurus-openai-search .ai-search-button-header {
-    padding: 14px 20px;
-    font-size: var(--ifm-font-size-base);
-  }
-  
-  .docusaurus-openai-search .ai-search-button-header svg {
-    margin-right: 10px;
-    width: 20px;
-    height: 20px;
-  }
-  
-  .docusaurus-openai-search .ai-modal-footer {
-    padding: 14px 20px;
-  }
 }
 
-/* Markdown rendering styles */
-.docusaurus-openai-search .markdown {
-  font-family: var(--ifm-font-family-base);
-  font-size: var(--ifm-font-size-base);
-  line-height: var(--ifm-line-height-base);
-}
-
-.docusaurus-openai-search .markdown h1 {
-  font-family: var(--ifm-heading-font-family);
-  font-size: var(--ifm-h1-font-size);
-  font-weight: var(--ifm-heading-font-weight);
-  line-height: var(--ifm-heading-line-height);
-  margin-top: var(--ifm-heading-margin-top);
-  margin-bottom: var(--ifm-heading-margin-bottom);
-}
-
-.docusaurus-openai-search .markdown h2 {
-  font-family: var(--ifm-heading-font-family);
-  font-size: var(--ifm-h2-font-size);
-  font-weight: var(--ifm-heading-font-weight);
-  line-height: var(--ifm-heading-line-height);
-  margin-top: var(--ifm-heading-margin-top);
-  margin-bottom: var(--ifm-heading-margin-bottom);
-}
-
-.docusaurus-openai-search .markdown h3 {
-  font-family: var(--ifm-heading-font-family);
-  font-size: var(--ifm-h3-font-size);
-  font-weight: var(--ifm-heading-font-weight);
-  line-height: var(--ifm-heading-line-height);
-  margin-top: var(--ifm-heading-margin-top);
-  margin-bottom: var(--ifm-heading-margin-bottom);
-}
-
-.docusaurus-openai-search .markdown h4 {
-  font-family: var(--ifm-heading-font-family);
-  font-size: var(--ifm-h4-font-size);
-  font-weight: var(--ifm-heading-font-weight);
-  line-height: var(--ifm-heading-line-height);
-  margin-top: var(--ifm-heading-margin-top);
-  margin-bottom: var(--ifm-heading-margin-bottom);
-}
-
-.docusaurus-openai-search .markdown p {
-  margin-top: var(--ifm-paragraph-margin-top);
-  margin-bottom: var(--ifm-paragraph-margin-bottom);
-}
-
-.docusaurus-openai-search .markdown ul, .docusaurus-openai-search .markdown ol {
-  padding-left: var(--ifm-list-left-padding);
-  margin-top: var(--ifm-list-margin);
-  margin-bottom: var(--ifm-list-margin);
-}
-
-.docusaurus-openai-search .markdown li {
-  margin-bottom: var(--ifm-list-item-margin);
-}
-
-.docusaurus-openai-search .markdown blockquote {
-  border-left: 4px solid var(--ifm-color-primary);
-  padding-left: var(--ifm-global-spacing);
-  margin-left: 0;
-  color: var(--ifm-color-secondary-darkest);
-}
-
-.docusaurus-openai-search .markdown a {
-  color: var(--ifm-link-color);
-  text-decoration: none;
-}
-
-.docusaurus-openai-search .markdown a:hover {
-  text-decoration: underline;
-  color: var(--ifm-link-hover-color);
-}
-
-.docusaurus-openai-search .markdown img {
-  max-width: 100%;
-  height: auto;
-}
-
-.docusaurus-openai-search .markdown table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: var(--ifm-table-margin);
-}
-
-.docusaurus-openai-search .markdown th, .docusaurus-openai-search .markdown td {
-  border: 1px solid var(--ifm-table-border-color);
-  padding: var(--ifm-table-cell-padding);
-}
-
-.docusaurus-openai-search .markdown th {
-  background-color: var(--ifm-table-head-background);
-  font-weight: var(--ifm-font-weight-bold);
-}
-
-.docusaurus-openai-search .ai-modal-footer {
-  padding: calc(var(--ifm-spacing-vertical) * 1.2) calc(var(--ifm-spacing-horizontal) * 1.2);
-  border-top: 1px solid var(--docsearch-separator-color, var(--ifm-color-emphasis-200));
-  color: var(--docsearch-muted-color, var(--ifm-color-secondary-darkest));
-  font-size: var(--ifm-font-size-sm);
-  text-align: center;
-  background-color: var(--docsearch-footer-background, var(--ifm-background-surface-color));
-  margin-top: var(--ifm-spacing-md);
-} 
+/* Let Docusaurus handle all markdown styles - removed redundant markdown styling */ 

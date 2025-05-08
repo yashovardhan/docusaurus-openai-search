@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "1.2.3",
+    "version": "1.2.4-alpha.12",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -39,7 +39,6 @@
     "dependencies": {
         "@docsearch/react": "^3.0.0",
         "algoliasearch": "^4.14.0",
-        "marked": "^5.0.0",
         "openai": "^4.0.0"
     },
     "devDependencies": {
@@ -47,7 +46,6 @@
         "@docusaurus/core": "^3.7.0",
         "@docusaurus/theme-search-algolia": "^3.7.0",
         "@docusaurus/types": "^3.7.0",
-        "@types/marked": "^5.0.2",
         "@types/react": "^18.3.21",
         "@types/react-dom": "^18.3.7",
         "eslint": "^8.55.0",

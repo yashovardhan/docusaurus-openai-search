@@ -269,6 +269,75 @@ The `prompts` object configures how prompts are generated for the AI:
 |----------|------------|-------------|
 | `onAIQuery` | `(query: string, success: boolean) => void` | Called when an AI query is made. `query` is the search string, `success` indicates whether the query was successful |
 
+## Styling Customization
+
+The component provides customizable CSS variables to adjust spacing throughout the UI. You can override these variables in your site's CSS to adjust the spacing to match your site's design.
+
+### CSS Variables
+
+The following CSS variables are available for customization:
+
+```css
+.docusaurus-openai-search {
+  /* Base spacing units - can be customized */
+  --ai-search-unit-xs: 4px;   /* Extra small spacing */
+  --ai-search-unit-sm: 8px;   /* Small spacing */
+  --ai-search-unit-md: 12px;  /* Medium spacing */
+  --ai-search-unit-lg: 16px;  /* Large spacing */
+  --ai-search-unit-xl: 24px;  /* Extra large spacing */
+  --ai-search-unit-xxl: 32px; /* Extra extra large spacing */
+}
+```
+
+### Customizing Spacing
+
+To customize the spacing in your Docusaurus site, add CSS overrides in your custom CSS file:
+
+```css
+/* In your custom CSS file */
+:root {
+  /* Adjust the spacing globally */
+  .docusaurus-openai-search {
+    --ai-search-unit-xs: 6px;   /* Make extra small spacing larger */
+    --ai-search-unit-sm: 12px;  /* Increase small spacing */
+    /* Other customizations... */
+  }
+}
+
+/* For dark mode adjustments */
+html[data-theme='dark'] .docusaurus-openai-search {
+  /* Dark mode specific adjustments if needed */
+}
+```
+
+### Usage Example
+
+If you want to make all UI elements more compact:
+
+```css
+.docusaurus-openai-search {
+  --ai-search-unit-xs: 2px;
+  --ai-search-unit-sm: 4px;
+  --ai-search-unit-md: 8px;
+  --ai-search-unit-lg: 12px;
+  --ai-search-unit-xl: 16px;
+  --ai-search-unit-xxl: 24px;
+}
+```
+
+Or if you prefer more spacious UI:
+
+```css
+.docusaurus-openai-search {
+  --ai-search-unit-xs: 6px;
+  --ai-search-unit-sm: 12px;
+  --ai-search-unit-md: 18px;
+  --ai-search-unit-lg: 24px;
+  --ai-search-unit-xl: 32px;
+  --ai-search-unit-xxl: 48px;
+}
+```
+
 ## Custom Prompt Templates
 
 You can fully customize the system and user prompts with custom templates.

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { marked } from 'marked';
 import { OpenAI } from 'openai';
 import { AISearchModalProps } from '../types';
 import {
@@ -201,10 +200,10 @@ export function AISearchModal({
     fetchAnswer();
   }, [query, retrievedContent, searchResults, apiKey, isRetrying, config, modalTexts.generatingText]);
 
-  // Effect to format markdown to HTML
+  // Effect to handle HTML response
   useEffect(() => {
     if (answer) {
-      let htmlContent = marked.parse(answer) as string;
+      let htmlContent = answer; // Use HTML directly, no need to parse markdown
 
       // Add a note about direct links if content fetching failed
       if (fetchFailed && searchResults.length > 0) {
@@ -218,10 +217,15 @@ export function AISearchModal({
           .join('');
 
         const noticeHtml = `
-          <div class="ai-notice">
-            <p><strong>Note:</strong> I couldn't access the full content of the documentation pages.
-            You may find more complete information by visiting these pages directly:</p>
-            <ul>${linksList}</ul>
+          <div class="admonition admonition-note alert alert--info">
+            <div class="admonition-heading">
+              <h5>Note</h5>
+            </div>
+            <div class="admonition-content">
+              <p>I couldn't access the full content of the documentation pages.
+              You may find more complete information by visiting these pages directly:</p>
+              <ul>${linksList}</ul>
+            </div>
           </div>
         `;
 
@@ -261,10 +265,12 @@ export function AISearchModal({
             </div>
           ) : error ? (
             <div className="ai-error">
-              <div className="error-message">{error}</div>
+              <div className="alert alert--danger error-message">
+                <p>{error}</p>
+              </div>
 
               <div className="ai-error-actions">
-                <button className="ai-retry-button" onClick={handleRetry}>
+                <button className="button button--primary ai-retry-button" onClick={handleRetry}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -305,7 +311,7 @@ export function AISearchModal({
           ) : (
             <div className="ai-answer">
               <div className="ai-response">
-                <div className="ai-response-text markdown">
+                <div className="ai-response-text markdown-body">
                   <div dangerouslySetInnerHTML={{ __html: formattedAnswer }} />
                 </div>
               </div>
