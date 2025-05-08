@@ -75,7 +75,9 @@ export function AISearchModal({
           throw new Error('No search results available to retrieve content from');
         }
 
-        const contents = await retrieveDocumentContent(searchResults, query);
+        const contents = await retrieveDocumentContent(searchResults, query, {
+          includeLlmsFile: config?.prompts?.includeLlmsFile
+        });
 
         if (contents.length === 0) {
           console.warn('Could not retrieve document content, using fallback mechanism');
@@ -106,7 +108,7 @@ export function AISearchModal({
     }
 
     fetchContent();
-  }, [query, searchResults, isRetrying, modalTexts.retrievingText]);
+  }, [query, searchResults, isRetrying, modalTexts.retrievingText, config]);
 
   // Then, generate answer based on retrieved content
   useEffect(() => {

@@ -14,6 +14,8 @@ export interface PromptOptions {
   maxDocuments?: number;
   /** Whether to include code blocks separately in the prompt */
   highlightCode?: boolean;
+  /** Whether to include llms.txt file if available */
+  includeLlmsFile?: boolean;
 }
 
 /**

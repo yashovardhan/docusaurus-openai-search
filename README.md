@@ -262,6 +262,7 @@ The `prompts` object configures how prompts are generated for the AI:
 | `siteName` | string | No | Name of your site or product to use in default prompts (default: `Documentation`) |
 | `maxDocuments` | number | No | Maximum number of documents to include in context (default: `4`) |
 | `highlightCode` | boolean | No | Whether to include code blocks separately in the prompt |
+| `includeLlmsFile` | boolean | No | Whether to include `llms.txt` from the site root if available. This file provides additional context for AI responses. Enabled by default, set to `false` to disable. |
 
 ### Event Callbacks
 
@@ -384,6 +385,20 @@ Sources:
 
 Keep your answer under 300 words and include code examples when available.
 ```
+
+## Using llms.txt for Enhanced AI Responses
+
+When using LLM models like GPT-4 to enhance your documentation search, you can provide additional global context to improve the AI's understanding of your product/service by creating an `llms.txt` file.
+
+### What is llms.txt?
+
+The `llms.txt` file is a plain text file you can place at the root of your Docusaurus site that contains important context about your product, service, or documentation that you want the AI to know. This information will be included in every AI search query when the `includeLlmsFile` option is enabled.
+
+### How to Use llms.txt
+
+1. Create a file named `llms.txt` in your site's `static/` directory (so it gets copied to the root of your built site)
+2. Add important information about your product/service that the AI should always know about
+3. The feature is enabled by default. If you need to disable it, set `includeLlmsFile: false` in your AI configuration
 
 ## Utility Functions
 

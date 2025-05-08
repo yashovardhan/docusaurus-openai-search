@@ -229,7 +229,8 @@ export function rankSearchResultsByRelevance(
  */
 export async function retrieveDocumentContent(
   searchResults: InternalDocSearchHit[],
-  query: string
+  query: string,
+  options?: { includeLlmsFile?: boolean }
 ): Promise<string[]> {
   if (!searchResults || searchResults.length === 0) return [];
 
@@ -240,6 +241,24 @@ export async function retrieveDocumentContent(
   // Fetch content from each document URL in parallel
   const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
   const contents = await Promise.all(contentPromises);
+
+  // Check for llms.txt file if option is enabled (default to true)
+  if (options?.includeLlmsFile !== false) {
+    try {
+      // Attempt to fetch the llms.txt file from the root of the site
+      const llmsResponse = await fetch('/llms.txt');
+      if (llmsResponse.ok) {
+        const llmsContent = await llmsResponse.text();
+        if (llmsContent.trim() !== '') {
+          // Add the llms.txt content to the beginning for higher priority
+          contents.unshift(`--- LLMS CONTEXT FILE ---\n${llmsContent}\n--- END LLMS CONTEXT ---`);
+        }
+      }
+    } catch (error) {
+      console.log('llms.txt file not found or cannot be loaded:', error);
+      // Continue without the file if not available
+    }
+  }
 
   // Process and return non-empty content
   return contents
