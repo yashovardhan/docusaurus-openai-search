@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "1.2.4-alpha.12",
+    "version": "1.4.0",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
