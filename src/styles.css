@@ -11,6 +11,14 @@
   --ai-search-unit-lg: 16px;
   --ai-search-unit-xl: 24px;
   --ai-search-unit-xxl: 32px;
+  
+  /* Custom font sizes based on --ifm-font-size-base */
+  --ai-search-font-xs: calc(var(--ifm-font-size-base) * 0.75);
+  --ai-search-font-sm: calc(var(--ifm-font-size-base) * 0.875);
+  --ai-search-font-md: var(--ifm-font-size-base);
+  --ai-search-font-lg: calc(var(--ifm-font-size-base) * 1.25);
+  --ai-search-font-xl: calc(var(--ifm-font-size-base) * 1.5);
+  --ai-search-font-xxl: calc(var(--ifm-font-size-base) * 1.75);
 }
 
 /* AI Search Header */
@@ -31,7 +39,7 @@
   background: var(--docsearch-highlight-color, var(--ifm-color-primary));
   color: white;
   font-weight: var(--ifm-font-weight-bold);
-  font-size: var(--ifm-font-size-base);
+  font-size: var(--ai-search-font-md);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -105,7 +113,7 @@
 
 .docusaurus-openai-search .ai-modal-header h3 {
   margin: 0;
-  font-size: var(--ifm-h4-font-size);
+  font-size: var(--ai-search-font-xl);
   font-weight: var(--ifm-font-weight-bold);
   padding: var(--ai-search-unit-xs) var(--ai-search-unit-sm);
   color: var(--ifm-color-emphasis-900);
@@ -190,12 +198,23 @@
 }
 
 .docusaurus-openai-search .ai-error {
-  padding: var(--ai-search-unit-xl);
-  text-align: center;
+  /* Use Docusaurus admonition classes instead of custom styling */
+  /* Empty ruleset - styling will come from Docusaurus admonition classes */
+}
+
+/* Add additional class to ensure proper spacing when used within our component */
+.docusaurus-openai-search .admonition {
   margin: var(--ai-search-unit-xl) 0;
 }
 
-/* Error message styling removed, using Docusaurus alert classes instead */
+.docusaurus-openai-search .admonition-heading {
+  display: flex;
+  align-items: center;
+}
+
+.docusaurus-openai-search .admonition-content {
+  margin-top: var(--ai-search-unit-sm);
+}
 
 .docusaurus-openai-search .ai-error-actions {
   margin: var(--ai-search-unit-md) 0;
@@ -232,7 +251,7 @@
 }
 
 .docusaurus-openai-search .ai-search-footer-left {
-  font-size: var(--ifm-h7-font-size);
+  font-size: var(--ai-search-font-sm);
 }
 
 .docusaurus-openai-search .ai-search-see-all {
@@ -248,7 +267,7 @@
   padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
   border-top: 1px solid var(--ifm-color-emphasis-200);
   color: var(--ifm-color-secondary-darkest);
-  font-size: var(--ifm-h7-font-size);
+  font-size: var(--ai-search-font-sm);
   text-align: center;
   background-color: var(--ifm-background-surface-color);
   margin-top: var(--ai-search-unit-lg);
