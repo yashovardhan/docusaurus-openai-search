@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -16,9 +16,6 @@
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage"
-    },
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
     },
     "repository": {
         "type": "git",
