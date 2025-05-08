@@ -18,104 +18,168 @@ npm install docusaurus-openai-search
 
 ## Setup
 
-### 1. Configure your Docusaurus config
+### 1. Install necessary packages
 
-Add your OpenAI API key to your `docusaurus.config.js` file:
-
-```js
-module.exports = {
-  // ...other config
-  customFields: {
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  },
-  scripts: [
-    {
-      src: '/docusaurus-openai-search.js',
-      async: true,
-    },
-  ],
-};
+```bash
+npm install docusaurus-openai-search docusaurus2-dotenv
 ```
 
-### 2. Expose the OpenAI API key
+### 2. Create an environment file
 
-Create a file named `docusaurus-env-variables-plugin.js` in your project root:
+Create a `.env` file in your project root:
 
-```js
-// A Docusaurus plugin to provide environment variables to the client
-
-const plugin = function (context, options) {
-  return {
-    name: "docusaurus-env-variables-plugin",
-    injectHtmlTags() {
-      return {
-        headTags: [
-          {
-            tagName: "script",
-            innerHTML: `window.OPENAI_API_KEY = "${process.env.OPENAI_API_KEY || ""}"`,
-          },
-        ],
-      };
-    },
-  };
-};
-
-module.exports = plugin;
-module.exports.default = plugin;
+```
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-Then add the plugin to your `docusaurus.config.js`:
+### 3. Configure docusaurus2-dotenv plugin
+
+Add the plugin to your `docusaurus.config.js`:
 
 ```js
-const envPlugin = require('./docusaurus-env-variables-plugin');
-
 module.exports = {
   // ...other config
   plugins: [
     // ...other plugins
-    envPlugin,
+    [
+      "docusaurus2-dotenv",
+      {
+        path: "./.env", // The path to your environment variables
+        safe: false, // If false ignore safe-mode, if true load './.env.example', if a string load that file as the sample
+        systemvars: false, // Set to true if you would rather load all system variables as well (useful for CI purposes)
+        silent: false, // If true, all warnings will be suppressed
+        expand: false, // Allows your variables to be "expanded" for reusability within your .env file
+        defaults: false, // Adds support for dotenv-defaults. If set to true, uses ./.env.defaults
+      },
+    ],
   ],
 };
 ```
 
-### 3. Add the swizzled theme component
+### 4. Swizzle the SearchBar component
 
-Create a file at `src/theme/SearchBar/index.js`:
+Run the swizzle command and select SearchBar to eject:
+
+```bash
+npm run swizzle
+```
+
+### 5. Replace the SearchBar component
+
+Replace the content of the swizzled component (typically at `src/theme/SearchBar/index.js` or `index.tsx`) with:
 
 ```jsx
-import React from 'react';
-import { DocusaurusAISearch } from 'docusaurus-openai-search';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import React from "react";
+import { DocusaurusAISearch } from "docusaurus-openai-search";
+import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 
 export default function SearchBar() {
-  const { 
-    siteConfig: { 
+  const {
+    siteConfig: {
       themeConfig: { algolia },
-      customFields,
     },
   } = useDocusaurusContext();
 
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  // AI search configuration
   const aiConfig = {
+    // OpenAI API settings
     openAI: {
-      apiKey: customFields.OPENAI_API_KEY,
-      model: 'gpt-4.1',
-      maxTokens: 2000,
-      temperature: 0.5,
+      apiKey,
+      model: "gpt-4.1",
+      maxTokens: 10000,
+      temperature: 0.3,
     },
+    // UI customization
     ui: {
-      aiButtonText: 'Ask AI about this',
-      modalTitle: 'AI Answer',
+      aiButtonText: "Ask AI",
+      modalTitle: "AI Assistant",
+      footerText: "Powered by AI",
     },
+    // Prompt customization
     prompts: {
-      siteName: 'Your Site Name',
+      siteName: "Your Site Name",
+      // Optional: Customize system prompt
+      systemPrompt: "You are a helpful assistant. Your goal is to provide detailed, accurate information about the documentation provided."
     },
   };
-
-  return <DocusaurusAISearch 
-    algoliaConfig={algolia} 
-    aiConfig={aiConfig} 
-  />;
+  
+  return <DocusaurusAISearch algoliaConfig={algolia} aiConfig={aiConfig} />;
 }
+```
+
+## Crafting Effective System Prompts
+
+A well-crafted system prompt is crucial for getting high-quality answers from the AI assistant. Here's a guide to creating effective system prompts for documentation:
+
+### System Prompt Structure
+
+An effective system prompt typically includes:
+
+1. **Role Definition**: Define the AI's role and expertise
+2. **Response Guidelines**: Set clear expectations for answer quality and style
+3. **Domain Knowledge**: Provide key facts about your product/platform
+4. **Formatting Preferences**: Specify how answers should be formatted
+
+### Example System Prompt Template
+
+Here's an annotated example of an effective system prompt:
+
+```js
+const systemPrompt =
+  // Role definition - clearly establish the assistant's identity and purpose
+  "You are a helpful [PRODUCT] expert assistant. Your goal is to provide detailed, accurate information about [PRODUCT]'s [FEATURES] to [TARGET USERS].\n\n" +
+  
+  // Response guidelines - establish clear expectations for answers
+  "RESPONSE GUIDELINES:\n" +
+  "1. BE HELPFUL: Always try to provide SOME guidance, even when the documentation doesn't contain a perfect answer.\n" +
+  "2. PRIORITIZE USER SUCCESS: Focus on helping the user accomplish their task with [PRODUCT].\n" +
+  "3. USE DOCUMENTATION FIRST: Base your answers primarily on the provided documentation snippets.\n" +
+  "4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available, as they're extremely valuable to developers.\n" +
+  "5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps based on standard [PRODUCT] patterns.\n" +
+  "6. BE HONEST: If you truly can't provide an answer, suggest relevant [PRODUCT] concepts or documentation sections that might help instead.\n" +
+  "7. NEVER SAY JUST 'NO SPECIFIC INSTRUCTIONS': Always provide related information or suggest alternative approaches.\n\n" +
+  
+  // Domain knowledge - provide key facts about your product/platform
+  "ABOUT [PRODUCT]:\n" +
+  "- [KEY FACT 1 ABOUT YOUR PRODUCT]\n" +
+  "- [KEY FACT 2 ABOUT YOUR PRODUCT]\n" +
+  "- [KEY FACT 3 ABOUT YOUR PRODUCT]\n" +
+  "- [KEY TECHNICAL DETAILS THAT HELP ANSWER COMMON QUESTIONS]";
+```
+
+### Best Practices
+
+1. **Be specific about response format**: Explicitly state if you want code examples, step-by-step instructions, etc.
+2. **Include critical domain knowledge**: Add key facts that help the AI understand your product's unique aspects
+3. **Set clear guardrails**: Define what the AI should do when it doesn't have a perfect answer
+4. **Balance brevity and detail**: Include enough context without overwhelming the model
+5. **Focus on user success**: Orient the prompt toward solving user problems, not just providing information
+
+### Tips for Technical Documentation
+
+For technical documentation, consider:
+
+1. **Emphasize code examples**: Instruct the AI to prioritize showing code snippets when relevant
+2. **Address common user scenarios**: Mention key use cases your users frequently encounter
+3. **Clarify technical terminology**: If your product uses specific technical terms, include brief definitions
+4. **Reference documentation structure**: If your docs have a specific organization, explain it briefly
+
+When implementing the system prompt in your SearchBar component:
+
+```jsx
+// In your SearchBar component
+const systemPrompt = 
+  "You are a helpful [YOUR PRODUCT] expert assistant...[rest of your prompt]";
+
+const aiConfig = {
+  // ...other config
+  prompts: {
+    siteName: "Your Site Name",
+    systemPrompt: systemPrompt,
+  },
+};
 ```
 
 ## API Reference
