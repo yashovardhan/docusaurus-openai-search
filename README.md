@@ -18,13 +18,7 @@ npm install docusaurus-openai-search
 
 ## Setup
 
-### 1. Install necessary packages
-
-```bash
-npm install docusaurus-openai-search docusaurus2-dotenv
-```
-
-### 2. Create an environment file
+### 1. Create an environment file
 
 Create a `.env` file in your project root:
 
@@ -32,27 +26,38 @@ Create a `.env` file in your project root:
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-### 3. Configure docusaurus2-dotenv plugin
+### 2. Configure a custom plugin to fetch your environment variable
 
-Add the plugin to your `docusaurus.config.js`:
+Create a plugin in your src folder (or your default plugins folder), ideally like `src/plugins/env-variables-plugin/index.js` with the following code
+
+```js
+// A Docusaurus plugin to provide environment variables to the client
+
+module.exports = function (context, options) {
+  return {
+    name: "docusaurus-env-variables-plugin",
+    injectHtmlTags() {
+      return {
+        headTags: [
+          {
+            tagName: "script",
+            innerHTML: `window.OPENAI_API_KEY = "${process.env.OPENAI_API_KEY || ""}"`,
+          },
+        ],
+      };
+    },
+  };
+};
+```
+
+### 3. Add the path to plugin to your `docusaurus.config.js`:
 
 ```js
 module.exports = {
   // ...other config
   plugins: [
     // ...other plugins
-    [
-      "docusaurus2-dotenv",
-      {
-        path: "./.env", // The path to your environment variables
-        safe: false, // If false ignore safe-mode, if true load './.env.example', if a string load that file as the sample
-        systemvars: false, // Set to true if you would rather load all system variables as well (useful for CI purposes)
-        silent: false, // If true, all warnings will be suppressed
-        expand: false, // Allows your variables to be "expanded" for reusability within your .env file
-        defaults: false, // Adds support for dotenv-defaults. If set to true, uses ./.env.defaults
-      },
-    ],
-  ],
+    './src/plugins/env-variables-plugin',
 };
 ```
 
@@ -80,7 +85,7 @@ export default function SearchBar() {
     },
   } = useDocusaurusContext();
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = typeof window !== "undefined" ? (window as any).OPENAI_API_KEY || "" : "";
 
   // AI search configuration
   const aiConfig = {
