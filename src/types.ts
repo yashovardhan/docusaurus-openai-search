@@ -18,6 +18,8 @@ export interface PromptOptions {
   includeLlmsFile?: boolean;
   /** Custom response guidelines to use in the system prompt */
   responseGuidelines?: string;
+  /** Whether to use AI-based summarization before sending to main LLM */
+  useSummarization?: boolean;
 }
 
 /**
@@ -25,13 +27,13 @@ export interface PromptOptions {
  */
 export interface OpenAIOptions {
   /** OpenAI API Key */
-  apiKey?: string;
+  apiKey: string;
   /** Model to use for AI search queries, defaults to gpt-4.1 */
-  model?: string;
+  model: string;
   /** Maximum tokens to use in AI requests */
-  maxTokens?: number;
+  maxTokens: number;
   /** Temperature for AI responses (0-1), lower is more deterministic */
-  temperature?: number;
+  temperature: number;
 }
 
 /**
@@ -63,7 +65,7 @@ export interface UIOptions {
  */
 export interface DocusaurusAISearchConfig {
   /** OpenAI API settings */
-  openAI?: OpenAIOptions;
+  openAI: OpenAIOptions;
   /** UI text and appearance customization */
   ui?: UIOptions;
   /** Prompt generation and content handling options */
@@ -75,30 +77,54 @@ export interface DocusaurusAISearchConfig {
 }
 
 /**
+ * Algolia DocSearch configuration
+ */
+export interface AlgoliaSearchConfig {
+  appId: string;
+  apiKey: string;
+  indexName: string;
+  contextualSearch?: boolean;
+  searchPagePath?: string | boolean;
+  externalUrlRegex?: string;
+  searchParameters?: Record<string, any>;
+  transformItems?: (items: any[]) => any[];
+  placeholder?: string;
+  translations?: {
+    button?: {
+      buttonText?: string;
+      buttonAriaLabel?: string;
+    };
+    modal?: Record<string, any>;
+  };
+}
+
+/**
+ * Docusaurus theme configuration
+ */
+export interface DocusaurusThemeConfig {
+  /** Algolia DocSearch configuration */
+  algolia: AlgoliaSearchConfig;
+  /** Prism syntax highlighting configuration */
+  prism: {
+    theme: string | object;
+    darkTheme?: string | object;
+  };
+  /** Color mode configuration */
+  colorMode?: {
+    respectPrefersColorScheme?: boolean;
+  };
+  /** Hideable sidebar configuration */
+  hideableSidebar?: boolean;
+}
+
+/**
  * Props for the DocusaurusAISearch component
  */
 export interface DocusaurusAISearchProps {
-  /** Algolia DocSearch configuration */
-  algoliaConfig: {
-    appId: string;
-    apiKey: string;
-    indexName: string;
-    contextualSearch?: boolean;
-    searchPagePath?: string | boolean;
-    externalUrlRegex?: string;
-    searchParameters?: Record<string, any>;
-    transformItems?: (items: any[]) => any[];
-    placeholder?: string;
-    translations?: {
-      button?: {
-        buttonText?: string;
-        buttonAriaLabel?: string;
-      };
-      modal?: Record<string, any>;
-    };
-  };
+  /** Docusaurus theme configuration */
+  themeConfig: DocusaurusThemeConfig;
   /** AI search configuration */
-  aiConfig?: DocusaurusAISearchConfig;
+  aiConfig: DocusaurusAISearchConfig;
 }
 
 /**
@@ -126,6 +152,7 @@ export interface AISearchModalProps {
   onClose: () => void;
   searchResults: InternalDocSearchHit[];
   config?: DocusaurusAISearchConfig;
+  themeConfig: DocusaurusThemeConfig;
 }
 
 /**
