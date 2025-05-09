@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "1.5.0",
+    "version": "1.6.0-alpha.35",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -39,7 +39,17 @@
     "dependencies": {
         "@docsearch/react": "^3.0.0",
         "algoliasearch": "^4.14.0",
-        "openai": "^4.0.0"
+        "hastscript": "^9.0.1",
+        "highlight.js": "^11.9.0",
+        "openai": "^4.0.0",
+        "prism-react-renderer": "^2.3.0",
+        "react-markdown": "^10.1.0",
+        "rehype-highlight": "^7.0.2",
+        "rehype-raw": "^7.0.0",
+        "remark-admonitions": "^1.2.1",
+        "remark-directive": "^4.0.0",
+        "remark-gfm": "^4.0.1",
+        "unist-util-visit": "^5.0.0"
     },
     "devDependencies": {
         "@docsearch/css": "^3.9.0",
