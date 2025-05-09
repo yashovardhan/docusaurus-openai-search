@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { OpenAI } from 'openai';
 import { AISearchModalProps } from '../types';
 import {
@@ -9,6 +9,11 @@ import {
   createUserPrompt
 } from '../utils';
 import '../styles.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import 'highlight.js/styles/atom-one-dark.css';
 
 /**
  * Modal component that displays AI-generated answers to search queries
@@ -29,6 +34,9 @@ export function AISearchModal({
   );
   const [fetchFailed, setFetchFailed] = useState<boolean>(false);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
+  
+  // Reference to the markdown container
+  const markdownRef = useRef<HTMLDivElement>(null);
 
   // Get the API key from config or window global variable
   const apiKey = config?.openAI?.apiKey || (typeof window !== 'undefined' ? window.OPENAI_API_KEY : '');
@@ -202,10 +210,10 @@ export function AISearchModal({
     fetchAnswer();
   }, [query, retrievedContent, searchResults, apiKey, isRetrying, config, modalTexts.generatingText]);
 
-  // Effect to handle HTML response
+  // Effect to handle markdown response
   useEffect(() => {
     if (answer) {
-      let htmlContent = answer; // Use HTML directly, no need to parse markdown
+      let markdownContent = answer;
 
       // Add a note about direct links if content fetching failed
       if (fetchFailed && searchResults.length > 0) {
@@ -214,29 +222,53 @@ export function AISearchModal({
           .map((result, idx) => {
             const title =
               result.hierarchy?.lvl0 || result.hierarchy?.lvl1 || 'Document ' + (idx + 1);
-            return `<li><a href="${result.url}" target="_blank">${title}</a></li>`;
+            return `- [${title}](${result.url})`;
           })
-          .join('');
+          .join('\n');
 
-        const noticeHtml = `
-          <div class="admonition admonition-note alert alert--info">
-            <div class="admonition-heading">
-              <h5>Note</h5>
-            </div>
-            <div class="admonition-content">
-              <p>I couldn't access the full content of the documentation pages.
-              You may find more complete information by visiting these pages directly:</p>
-              <ul>${linksList}</ul>
-            </div>
-          </div>
+        const noticeMarkdown = `
+> **Note**
+> 
+> I couldn't access the full content of the documentation pages.
+> You may find more complete information by visiting these pages directly:
+>
+${linksList}
         `;
 
-        htmlContent += noticeHtml;
+        markdownContent += noticeMarkdown;
       }
 
-      setFormattedAnswer(htmlContent);
+      setFormattedAnswer(markdownContent);
     }
   }, [answer, fetchFailed, searchResults]);
+
+  // Apply blockquote admonition classes after render
+  useEffect(() => {
+    if (markdownRef.current && !loading && !error) {
+      // Find all blockquotes
+      const blockquotes = markdownRef.current.querySelectorAll('blockquote');
+      
+      blockquotes.forEach(blockquote => {
+        // Find the first strong tag in the blockquote
+        const firstStrong = blockquote.querySelector('p:first-child strong:first-child');
+        
+        if (firstStrong) {
+          const text = firstStrong.textContent?.trim().toLowerCase();
+          
+          // Add appropriate class based on content
+          if (text === 'note' || text === 'info') {
+            blockquote.classList.add('note');
+          } else if (text === 'tip') {
+            blockquote.classList.add('tip');
+          } else if (text === 'warning') {
+            blockquote.classList.add('warning');
+          } else if (text === 'danger' || text === 'caution') {
+            blockquote.classList.add('danger');
+          }
+        }
+      });
+    }
+  }, [loading, error, formattedAnswer]);
 
   return (
     <div
@@ -313,8 +345,13 @@ export function AISearchModal({
           ) : (
             <div className="ai-answer">
               <div className="ai-response">
-                <div className="ai-response-text markdown-body">
-                  <div dangerouslySetInnerHTML={{ __html: formattedAnswer }} />
+                <div className="ai-response-text markdown-body" ref={markdownRef}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                  >
+                    {formattedAnswer}
+                  </ReactMarkdown>
                 </div>
               </div>
             </div>

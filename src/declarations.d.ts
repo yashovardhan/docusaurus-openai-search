@@ -16,3 +16,5 @@ declare module '*.css' {
 // DocSearch modal modules
 declare module '@docsearch/react/modal';
 declare module '@docsearch/react/style'; 
+declare module 'remark-admonitions'; 
+declare module 'remark-directive'; 

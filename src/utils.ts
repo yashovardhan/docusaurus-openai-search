@@ -336,17 +336,53 @@ export function generateFallbackContent(searchResults: InternalDocSearchHit[], q
 }
 
 /**
+ * Default response guidelines for markdown formatting
+ */
+export const DEFAULT_RESPONSE_GUIDELINES = `FORMAT YOUR RESPONSE AS MARKDOWN: Generate valid markdown that follows these guidelines:
+ - Use ## and ### for section headings (not #)
+ - Format your response for Docusaurus
+ - For code blocks use triple backticks with language specification, e.g. \`\`\`javascript
+ - Always specify the language for code blocks (javascript, jsx, typescript, bash, etc.)
+ - For inline code, use single backticks
+ - Use standard markdown for links: [text](url)
+ - For admonitions/callouts, use blockquote style:
+   > **Note**
+   > 
+   > This is a note
+
+   > **Tip**
+   > 
+   > This is a tip
+
+   > **Warning**
+   > 
+   > This is a warning
+
+   > **Danger**
+   > 
+   > This is a danger warning
+ - NEVER use HTML tags - use only pure markdown syntax
+ - IMPORTANT: Always include proper language specifier for code blocks to ensure syntax highlighting works
+ - Format tables using markdown table syntax
+ - For complex layouts and formatting, rely on standard markdown features rather than HTML`;
+
+/**
  * Creates a system prompt for use with OpenAI
  */
 export function createSystemPrompt(options?: {
   systemPrompt?: string;
   siteName?: string;
+  responseGuidelines?: string;
 }): string {
+  const responseGuidelines = options?.responseGuidelines || DEFAULT_RESPONSE_GUIDELINES;
+
   if (options?.systemPrompt) {
-    return options.systemPrompt;
+    return options.systemPrompt + `\n\n${responseGuidelines}`;
   }
 
   const siteName = options?.siteName || 'Documentation';
+  
+  // Use custom guidelines if provided, otherwise use defaults
   
   return `You are a helpful ${siteName} assistant. Your goal is to provide detailed, accurate information about ${siteName} based on the documentation provided.
 
@@ -357,13 +393,7 @@ RESPONSE GUIDELINES:
 4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available.
 5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps.
 6. BE HONEST: If you truly can't provide an answer, suggest relevant concepts or documentation sections that might help instead.
-7. FORMAT YOUR RESPONSE AS HTML: Generate valid HTML that follows these guidelines:
-   - Use <h3>, <h4> tags for section headings
-   - Use <p> tags for paragraphs
-   - Wrap code in <pre><code class="language-xxx">...</code></pre> where xxx is the language (e.g., javascript, jsx, typescript)
-   - Use <ul> and <li> for lists
-   - Add appropriate class names for Docusaurus compatibility (e.g., admonition classes for notes/warnings)
-   - DO NOT use markdown formatting
+7. ${responseGuidelines}
 `;
 }
 
@@ -449,13 +479,5 @@ Based on the above documentation, provide the most helpful answer you can to the
 2. If you can't find a direct answer, still provide guidance based on similar concepts
 3. Suggest specific next steps the user could take
 4. Keep your explanation concise but thorough
-5. Link to specific documentation pages when relevant
-6. Format your entire response as valid HTML, not markdown
-7. Use proper HTML elements:
-   - <h3>, <h4> for headings
-   - <p> for paragraphs
-   - <pre><code class="language-xxx"> for code blocks
-   - <ul>/<li> for lists
-   - <a href="..."> for links
-   - Use Docusaurus compatible class names for UI components`;
+5. Link to specific documentation pages when relevant`;
 } 

@@ -16,6 +16,8 @@ export interface PromptOptions {
   highlightCode?: boolean;
   /** Whether to include llms.txt file if available */
   includeLlmsFile?: boolean;
+  /** Custom response guidelines to use in the system prompt */
+  responseGuidelines?: string;
 }
 
 /**

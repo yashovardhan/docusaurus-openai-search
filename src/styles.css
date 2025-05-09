@@ -288,4 +288,139 @@
   }
 }
 
-/* Let Docusaurus handle all markdown styles - removed redundant markdown styling */ 
+/* Let Docusaurus handle all markdown styles - removed redundant markdown styling */
+
+/* Markdown admonitions styling */
+.admonition {
+  margin-bottom: 1em;
+  padding: 15px 30px 15px 15px;
+  border-radius: 5px;
+  border-left: 8px solid;
+  position: relative;
+}
+
+.admonition-heading {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.admonition-content p:last-child {
+  margin-bottom: 0;
+}
+
+.admonition-note, .admonition-info, .admonition.info {
+  background-color: rgba(0, 136, 255, 0.1);
+  border-left-color: #0088ff;
+}
+
+.admonition-tip, .admonition.tip {
+  background-color: rgba(0, 204, 102, 0.1);
+  border-left-color: #00cc66;
+}
+
+.admonition-warning, .admonition.warning {
+  background-color: rgba(255, 153, 0, 0.1);
+  border-left-color: #ff9900;
+}
+
+.admonition-caution, .admonition-danger, .admonition.danger {
+  background-color: rgba(255, 77, 77, 0.1);
+  border-left-color: #ff4d4d;
+}
+
+/* Additional support for Docusaurus-style admonitions using remark-directive */
+.contains-task-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+/* Code block styling */
+.markdown-body pre {
+  background-color: #282c34; /* atom-one-dark background */
+  border-radius: 5px;
+  color: #abb2bf; /* atom-one-dark foreground */
+  padding: 16px;
+  overflow: auto;
+  margin-bottom: 16px;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  background-color: rgba(110, 118, 129, 0.1);
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background-color: transparent !important; /* Force transparent background for code within pre */
+  border-radius: 0;
+  font-size: 0.9em;
+  line-height: 1.5;
+  white-space: pre;
+  color: inherit !important; /* Ensure text color is inherited from pre element */
+}
+
+/* Markdown blockquote-style admonitions */
+.markdown-body blockquote {
+  margin-bottom: 1em;
+  padding: 15px 30px 15px 15px;
+  border-radius: 5px;
+  border-left: 8px solid #ddd;
+  background-color: rgba(235, 237, 240, 0.2);
+  color: var(--ifm-font-color-base);
+  position: relative;
+}
+
+.markdown-body blockquote p:first-child strong:first-child {
+  display: block;
+  margin-bottom: 0.5em;
+  font-weight: 700;
+  font-size: 1em;
+}
+
+/* Use data attributes for admonition types instead of :has and :contains selectors */
+.markdown-body blockquote.note {
+  background-color: rgba(0, 136, 255, 0.1);
+  border-left-color: #0088ff;
+}
+
+.markdown-body blockquote.tip {
+  background-color: rgba(0, 204, 102, 0.1);
+  border-left-color: #00cc66;
+}
+
+.markdown-body blockquote.warning {
+  background-color: rgba(255, 153, 0, 0.1);
+  border-left-color: #ff9900;
+}
+
+.markdown-body blockquote.danger {
+  background-color: rgba(255, 77, 77, 0.1);
+  border-left-color: #ff4d4d;
+}
+
+/* Color for admonition titles */
+.markdown-body blockquote.note strong:first-child {
+  color: #0088ff;
+}
+
+.markdown-body blockquote.tip strong:first-child {
+  color: #00cc66;
+}
+
+.markdown-body blockquote.warning strong:first-child {
+  color: #ff9900;
+}
+
+.markdown-body blockquote.danger strong:first-child {
+  color: #ff4d4d;
+}
+
+/* JavaScript will add these classes based on the first strong element */
+
+/* Removing old admonition styles */
+.admonition {
+  display: none;
+} 
