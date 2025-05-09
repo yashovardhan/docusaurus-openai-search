@@ -6,14 +6,61 @@ import {
   retrieveDocumentContent,
   generateFallbackContent,
   createSystemPrompt,
-  createUserPrompt
+  createUserPrompt,
+  summarizeContentWithAI
 } from '../utils';
 import '../styles.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
-import 'highlight.js/styles/atom-one-dark.css';
+import { Highlight, themes as prismThemes, type PrismTheme } from 'prism-react-renderer';
+import type { Components } from 'react-markdown';
+
+// Type definitions for code component props
+interface CodeProps {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+  theme?: PrismTheme;
+}
+
+/**
+ * Custom code block renderer for ReactMarkdown
+ */
+const CodeBlock = ({ node, inline, className, children, ...props }: CodeProps) => {
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match && match[1] ? match[1] : '';
+  const code = String(children).replace(/\n$/, '');
+
+  if (!inline && language) {
+    return (
+      <Highlight 
+        theme={props.theme || prismThemes.github} 
+        code={code} 
+        language={language}
+      >
+        {({ className, style, tokens, getLineProps, getTokenProps }) => (
+          <pre className={className} style={style}>
+            {tokens.map((line, i) => (
+              <div key={i} {...getLineProps({ line })}>
+                {line.map((token, key) => (
+                  <span key={key} {...getTokenProps({ token })} />
+                ))}
+              </div>
+            ))}
+          </pre>
+        )}
+      </Highlight>
+    );
+  }
+
+  return (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+};
 
 /**
  * Modal component that displays AI-generated answers to search queries
@@ -22,7 +69,8 @@ export function AISearchModal({
   query,
   onClose,
   searchResults,
-  config
+  config,
+  themeConfig
 }: AISearchModalProps): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +88,31 @@ export function AISearchModal({
 
   // Get the API key from config or window global variable
   const apiKey = config?.openAI?.apiKey || (typeof window !== 'undefined' ? window.OPENAI_API_KEY : '');
+
+  // Get Prism theme for code highlighting
+  const getPrismTheme = (): PrismTheme => {
+    const isDarkTheme = typeof document !== 'undefined' && 
+                        document.documentElement.dataset.theme === 'dark';
+    
+    if (themeConfig?.prism) {
+      if (isDarkTheme && 
+          themeConfig.prism.darkTheme && 
+          typeof themeConfig.prism.darkTheme === 'object' &&
+          'plain' in themeConfig.prism.darkTheme &&
+          'styles' in themeConfig.prism.darkTheme) {
+        return themeConfig.prism.darkTheme as PrismTheme;
+      } else if (
+          themeConfig.prism.theme &&
+          typeof themeConfig.prism.theme === 'object' &&
+          'plain' in themeConfig.prism.theme &&
+          'styles' in themeConfig.prism.theme) {
+        return themeConfig.prism.theme as PrismTheme;
+      }
+    }
+    
+    // Default to standard themes if custom ones aren't available
+    return isDarkTheme ? prismThemes.vsDark : prismThemes.github;
+  };
 
   // Default modal text overrides
   const modalTexts = {
@@ -88,15 +161,12 @@ export function AISearchModal({
         });
 
         if (contents.length === 0) {
-          console.warn('Could not retrieve document content, using fallback mechanism');
-          // Use fallback mechanism to at least provide some information
+          // Use search result data directly as fallback
           const fallbackContents = generateFallbackContent(searchResults, query);
-
+          
           if (fallbackContents.length > 0) {
             setRetrievedContent(fallbackContents);
-            setRetrievalStatus(
-              `Using search results as content (${fallbackContents.length} results)`
-            );
+            setRetrievalStatus(`Using search results directly (${fallbackContents.length} results)`);
             setFetchFailed(true);
           } else {
             throw new Error('Could not retrieve or generate any content for this search');
@@ -106,7 +176,6 @@ export function AISearchModal({
           setRetrievalStatus(`Retrieved content from ${contents.length} documents`);
         }
       } catch (err: any) {
-        console.error('Error retrieving document content:', err);
         setRetrievalStatus('Failed to retrieve document content');
         setError(
           `Unable to retrieve documentation content: ${err.message || 'Unknown error'}. Please try a different search query.`
@@ -143,9 +212,28 @@ export function AISearchModal({
           siteName: config?.prompts?.siteName
         });
         
+        // Summarize content with AI if enabled in config
+        let processedContent = retrievedContent;
+        if (config?.prompts?.useSummarization && apiKey) {
+          setRetrievalStatus('Optimizing document content...');
+          
+          processedContent = await summarizeContentWithAI(
+            query, 
+            retrievedContent, 
+            apiKey, 
+            {
+              // Use the same model as the main answer for consistency
+              model: config?.openAI?.model || 'gpt-4.1',
+              maxTokens: config?.openAI?.maxTokens || 2000
+            }
+          );
+          
+          setRetrievalStatus(modalTexts.generatingText);
+        }
+        
         const userPrompt = createUserPrompt(
           query, 
-          retrievedContent, 
+          processedContent, 
           searchResults, 
           {
             userPrompt: config?.prompts?.userPrompt,
@@ -160,6 +248,12 @@ export function AISearchModal({
             apiKey: apiKey,
             dangerouslyAllowBrowser: true,
           });
+
+          // For user prompt, show the beginning (query) and a summary of docs
+          // Now we're already showing the full prompt in createUserPrompt, so we can keep this short
+          const truncatedPrompt = userPrompt.split('\n').slice(0, 5).join('\n') + 
+            '\n[... Content from retrieved documents omitted for brevity ...]\n' +
+            userPrompt.split('\n').slice(-8).join('\n');
 
           const response = await openai.chat.completions.create({
             model: config?.openAI?.model || 'gpt-4.1',
@@ -178,6 +272,7 @@ export function AISearchModal({
           });
 
           const generatedAnswer = response.choices[0]?.message?.content;
+          
           setAnswer(
             generatedAnswer ||
               "Sorry, I couldn't find relevant information in our documentation to answer your question."
@@ -270,16 +365,28 @@ ${linksList}
     }
   }, [loading, error, formattedAnswer]);
 
+  // Create the classes for the modal based on Docusaurus theme variables
+  const modalClasses = {
+    overlay: [
+      'ai-modal-overlay',
+      themeConfig?.colorMode?.respectPrefersColorScheme ? 'respect-color-scheme' : '',
+    ].filter(Boolean).join(' '),
+    content: [
+      'ai-modal-content',
+      themeConfig?.hideableSidebar ? 'hideable-sidebar' : '',
+    ].filter(Boolean).join(' ')
+  };
+
   return (
     <div
-      className="ai-modal-overlay"
+      className={modalClasses.overlay}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="ai-modal-content">
+      <div className={modalClasses.content}>
         <div className="ai-modal-header">
           <h3>{modalTexts.modalTitle}</h3>
           <button className="ai-modal-close" onClick={onClose}>
@@ -348,7 +455,50 @@ ${linksList}
                 <div className="ai-response-text markdown-body" ref={markdownRef}>
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                    rehypePlugins={[rehypeRaw]}
+                    components={{
+                      // Override pre rendering to avoid nesting
+                      // @ts-ignore - The type definition for pre component in ReactMarkdown is complex
+                      pre: ({ children }) => children,
+                      
+                      // @ts-ignore - The type definition for code component in ReactMarkdown is complex
+                      code: (codeProps: any) => {
+                        const { className, children } = codeProps;
+                        // Check if this is a code block or inline code
+                        const match = /language-(\w+)/.exec(className || '');
+                        
+                        // If no language is specified, render as inline code
+                        if (!match) {
+                          return <code className={className}>{children}</code>;
+                        }
+                        
+                        const language = match[1];
+                        const code = String(children).replace(/\n$/, '');
+                        
+                        // Get the appropriate theme based on current mode
+                        const codeTheme = getPrismTheme();
+
+                        return (
+                          <Highlight 
+                            theme={codeTheme} 
+                            code={code} 
+                            language={language}
+                          >
+                            {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                              <pre className={className} style={style}>
+                                {tokens.map((line, i) => (
+                                  <div key={i} {...getLineProps({ line })}>
+                                    {line.map((token, key) => (
+                                      <span key={key} {...getTokenProps({ token })} />
+                                    ))}
+                                  </div>
+                                ))}
+                              </pre>
+                            )}
+                          </Highlight>
+                        );
+                      }
+                    }}
                   >
                     {formattedAnswer}
                   </ReactMarkdown>

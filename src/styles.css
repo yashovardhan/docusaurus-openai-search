@@ -1,4 +1,4 @@
-/* AI-enhanced Search Bar Styles - Minimized version */
+/* AI-enhanced Search Bar Styles */
 .docusaurus-openai-search {
   /* Use Docusaurus font family and color */
   font-family: var(--ifm-font-family-base);
@@ -70,7 +70,6 @@
   z-index: 100 !important;
 }
 
-/* Make sure our search button also has a high z-index */
 .docusaurus-openai-search .DocSearch-Button {
   z-index: 200 !important;
   position: relative;
@@ -309,23 +308,23 @@
 }
 
 .admonition-note, .admonition-info, .admonition.info {
-  background-color: rgba(0, 136, 255, 0.1);
-  border-left-color: #0088ff;
+  background-color: var(--ifm-color-info-contrast-background);
+  border-left-color: var(--ifm-color-info);
 }
 
 .admonition-tip, .admonition.tip {
-  background-color: rgba(0, 204, 102, 0.1);
-  border-left-color: #00cc66;
+  background-color: var(--ifm-color-success-contrast-background);
+  border-left-color: var(--ifm-color-success);
 }
 
 .admonition-warning, .admonition.warning {
-  background-color: rgba(255, 153, 0, 0.1);
-  border-left-color: #ff9900;
+  background-color: var(--ifm-color-warning-contrast-background);
+  border-left-color: var(--ifm-color-warning);
 }
 
 .admonition-caution, .admonition-danger, .admonition.danger {
-  background-color: rgba(255, 77, 77, 0.1);
-  border-left-color: #ff4d4d;
+  background-color: var(--ifm-color-danger-contrast-background);
+  border-left-color: var(--ifm-color-danger);
 }
 
 /* Additional support for Docusaurus-style admonitions using remark-directive */
@@ -336,9 +335,9 @@
 
 /* Code block styling */
 .markdown-body pre {
-  background-color: #282c34; /* atom-one-dark background */
+  background-color: var(--ifm-code-background);
   border-radius: 5px;
-  color: #abb2bf; /* atom-one-dark foreground */
+  color: var(--ifm-color-primary);
   padding: 16px;
   overflow: auto;
   margin-bottom: 16px;
@@ -349,7 +348,7 @@
   font-size: 0.9em;
   padding: 0.2em 0.4em;
   border-radius: 3px;
-  background-color: rgba(110, 118, 129, 0.1);
+  background-color: var(--ifm-code-background);
 }
 
 .markdown-body pre code {
@@ -367,8 +366,8 @@
   margin-bottom: 1em;
   padding: 15px 30px 15px 15px;
   border-radius: 5px;
-  border-left: 8px solid #ddd;
-  background-color: rgba(235, 237, 240, 0.2);
+  border-left: 8px solid var(--ifm-color-emphasis-300);
+  background-color: var(--ifm-color-emphasis-100);
   color: var(--ifm-font-color-base);
   position: relative;
 }
@@ -382,40 +381,40 @@
 
 /* Use data attributes for admonition types instead of :has and :contains selectors */
 .markdown-body blockquote.note {
-  background-color: rgba(0, 136, 255, 0.1);
-  border-left-color: #0088ff;
+  background-color: var(--ifm-color-info-contrast-background);
+  border-left-color: var(--ifm-color-info);
 }
 
 .markdown-body blockquote.tip {
-  background-color: rgba(0, 204, 102, 0.1);
-  border-left-color: #00cc66;
+  background-color: var(--ifm-color-success-contrast-background);
+  border-left-color: var(--ifm-color-success);
 }
 
 .markdown-body blockquote.warning {
-  background-color: rgba(255, 153, 0, 0.1);
-  border-left-color: #ff9900;
+  background-color: var(--ifm-color-warning-contrast-background);
+  border-left-color: var(--ifm-color-warning);
 }
 
 .markdown-body blockquote.danger {
-  background-color: rgba(255, 77, 77, 0.1);
-  border-left-color: #ff4d4d;
+  background-color: var(--ifm-color-danger-contrast-background);
+  border-left-color: var(--ifm-color-danger);
 }
 
 /* Color for admonition titles */
 .markdown-body blockquote.note strong:first-child {
-  color: #0088ff;
+  color: var(--ifm-color-info);
 }
 
 .markdown-body blockquote.tip strong:first-child {
-  color: #00cc66;
+  color: var(--ifm-color-success);
 }
 
 .markdown-body blockquote.warning strong:first-child {
-  color: #ff9900;
+  color: var(--ifm-color-warning);
 }
 
 .markdown-body blockquote.danger strong:first-child {
-  color: #ff4d4d;
+  color: var(--ifm-color-danger);
 }
 
 /* JavaScript will add these classes based on the first strong element */
@@ -423,4 +422,72 @@
 /* Removing old admonition styles */
 .admonition {
   display: none;
+}
+
+/* Admonition styles using Docusaurus variables */
+.markdown-body blockquote {
+  margin-bottom: 1em;
+  padding: 15px 30px 15px 15px;
+  border-radius: var(--ifm-alert-border-radius);
+  border-left: 8px solid var(--ifm-color-emphasis-300);
+  background-color: var(--ifm-alert-background-color);
+  color: var(--ifm-font-color-base);
+  position: relative;
+}
+
+.markdown-body blockquote p:first-child strong:first-child {
+  display: block;
+  margin-bottom: 0.5em;
+  font-weight: var(--ifm-font-weight-bold);
+  font-size: 1em;
+}
+
+/* Note */
+.markdown-body blockquote.note {
+  background-color: var(--ifm-color-info-contrast-background);
+  border-left-color: var(--ifm-color-info);
+}
+
+.markdown-body blockquote.note strong:first-child {
+  color: var(--ifm-color-info);
+}
+
+/* Tip */
+.markdown-body blockquote.tip {
+  background-color: var(--ifm-color-success-contrast-background);
+  border-left-color: var(--ifm-color-success);
+}
+
+.markdown-body blockquote.tip strong:first-child {
+  color: var(--ifm-color-success);
+}
+
+/* Warning */
+.markdown-body blockquote.warning {
+  background-color: var(--ifm-color-warning-contrast-background);
+  border-left-color: var(--ifm-color-warning);
+}
+
+.markdown-body blockquote.warning strong:first-child {
+  color: var(--ifm-color-warning);
+}
+
+/* Danger */
+.markdown-body blockquote.danger {
+  background-color: var(--ifm-color-danger-contrast-background);
+  border-left-color: var(--ifm-color-danger);
+}
+
+.markdown-body blockquote.danger strong:first-child {
+  color: var(--ifm-color-danger);
+}
+
+/* Support for color scheme variants */
+.docusaurus-openai-search .respect-color-scheme .markdown-body {
+  color-scheme: light dark;
+}
+
+/* Support for hideable sidebar layouts */
+.docusaurus-openai-search .hideable-sidebar .markdown-body {
+  scroll-padding-top: var(--ifm-navbar-height);
 } 
