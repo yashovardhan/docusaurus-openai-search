@@ -5,8 +5,6 @@ import { DocumentContent, RankedSearchResult } from './types';
  * Tracks AI queries for analytics purposes
  */
 export function trackAIQuery(query: string, success: boolean = true): void {
-  console.log(`[AI Search] Query: "${query}" (${success ? "success" : "failed"})`);
-
   try {
     if (typeof window !== "undefined" && (window as any).gtag) {
       (window as any).gtag("event", "ai_search", {
@@ -16,7 +14,7 @@ export function trackAIQuery(query: string, success: boolean = true): void {
       });
     }
   } catch (e) {
-    console.warn("Failed to track AI query:", e);
+    // Silently handle error
   }
 }
 
@@ -25,6 +23,14 @@ export function trackAIQuery(query: string, success: boolean = true): void {
  */
 export async function fetchDocumentContent(url: string): Promise<string> {
   try {
+    // First, try direct HTML extraction from search results
+    // This will work even when paths don't match perfectly
+    const directContent = await extractContentFromSearchResult(url);
+    if (directContent && directContent.trim() !== "") {
+      return directContent;
+    }
+    
+    // Fall back to regular path-based fetching
     // Convert absolute URL to relative path if it's from the same origin
     let path = url;
 
@@ -39,6 +45,14 @@ export async function fetchDocumentContent(url: string): Promise<string> {
           path = `${path}index.html`;
         } else if (!path.includes(".")) {
           path = `${path}/index.html`;
+        } else if (path.includes("#")) {
+          // Strip hash/anchor fragments
+          path = path.split("#")[0];
+        }
+        
+        // Handle any query parameters
+        if (path.includes("?")) {
+          path = path.split("?")[0];
         }
       } else {
         return "";
@@ -46,55 +60,133 @@ export async function fetchDocumentContent(url: string): Promise<string> {
     }
 
     const response = await fetch(path);
-    if (!response.ok) return "";
-
-    const html = await response.text();
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
-
-    // Find the main content area
-    const mainContent =
-      tempDiv.querySelector(".markdown") ||
-      tempDiv.querySelector("article") ||
-      tempDiv.querySelector("main") ||
-      tempDiv.querySelector(".container") ||
-      tempDiv.querySelector('div[class*="docItemContainer"]') ||
-      tempDiv.querySelector('div[class*="docMainContainer"]');
-
-    if (mainContent) {
-      // Remove non-content elements
-      mainContent.querySelectorAll(
-        "script, style, nav, .navbar, .sidebar, .pagination, .tocCollapsible, .tableOfContents"
-      ).forEach(node => node.remove());
-
-      // Extract code blocks
-      const codeBlocks: string[] = [];
-      mainContent.querySelectorAll(
-        'pre code, .codeBlock, .prism-code, code[class*="language-"], div[class*="codeBlockContainer"]'
-      ).forEach(codeEl => {
-        const codeContent = codeEl.textContent || "";
-        if (codeContent.trim()) {
-          codeBlocks.push(codeContent);
+    if (!response.ok) {
+      // Try one more alternative approach - fetch without index.html
+      if (path.endsWith('index.html')) {
+        const altPath = path.replace('index.html', '');
+        const altResponse = await fetch(altPath);
+        if (!altResponse.ok) {
+          return "";
         }
-      });
-
-      let extractedText = mainContent.textContent || "";
-
-      // Add extracted code blocks if they exist
-      if (codeBlocks.length > 0) {
-        const uniqueCodeBlocks = [...new Set(codeBlocks)];
-        extractedText += "\n\nCODE EXAMPLES:\n";
-        uniqueCodeBlocks.forEach((code, index) => {
-          extractedText += `\n--- CODE BLOCK ${index + 1} ---\n${code}\n--- END CODE BLOCK ---\n`;
-        });
+        return extractContentFromHTML(await altResponse.text());
       }
-
-      return extractedText;
+      
+      return "";
     }
 
-    return "";
+    return extractContentFromHTML(await response.text());
   } catch (error) {
-    console.error(`Error fetching document content from ${url}:`, error);
+    return "";
+  }
+}
+
+/**
+ * Extract content directly from HTML text
+ */
+function extractContentFromHTML(html: string): string {
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = html;
+
+  // Find the main content area - try multiple selectors used by different Docusaurus themes
+  const mainContent =
+    tempDiv.querySelector("article") ||
+    tempDiv.querySelector("main") ||
+    tempDiv.querySelector('.markdown') ||
+    tempDiv.querySelector('.theme-doc-markdown') ||
+    tempDiv.querySelector('div[class*="docItemContainer"]') ||
+    tempDiv.querySelector('div[class*="docMainContainer"]') ||
+    tempDiv.querySelector('div[class*="prose"]') ||
+    tempDiv.querySelector('div[class*="docusaurus-content"]') ||
+    tempDiv.querySelector('div[class*="docs-content"]') ||
+    tempDiv.querySelector('.container .row article') ||
+    tempDiv.querySelector('div[class*="content"]') ||
+    tempDiv.querySelector('.container');
+
+  if (mainContent) {
+    // Remove non-content elements
+    mainContent.querySelectorAll(
+      "script, style, nav, .navbar, .sidebar, .pagination, .tocCollapsible, .tableOfContents, footer, .footer"
+    ).forEach(node => node.remove());
+
+    // Extract code blocks
+    const codeBlocks: string[] = [];
+    mainContent.querySelectorAll(
+      'pre code, .codeBlock, .prism-code, code[class*="language-"], div[class*="codeBlockContainer"]'
+    ).forEach(codeEl => {
+      const codeContent = codeEl.textContent || "";
+      if (codeContent.trim()) {
+        codeBlocks.push(codeContent);
+      }
+    });
+    
+    let extractedText = mainContent.textContent || "";
+
+    // Add extracted code blocks
+    if (codeBlocks.length > 0) {
+      const uniqueCodeBlocks = [...new Set(codeBlocks)];
+      extractedText += "\n\nCODE EXAMPLES:\n";
+      uniqueCodeBlocks.forEach((code, index) => {
+        extractedText += `\n--- CODE BLOCK ${index + 1} ---\n${code}\n--- END CODE BLOCK ---\n`;
+      });
+    }
+
+    return extractedText;
+  } else {
+    // Last resort fallback - just get the body text
+    const bodyElement = tempDiv.querySelector('body');
+    if (bodyElement) {
+      return bodyElement.textContent || "";
+    }
+    
+    return "";
+  }
+}
+
+/**
+ * Extract content directly from a search result without relying on URL fetching
+ */
+async function extractContentFromSearchResult(url: string): Promise<string> {
+  // This is a fallback mechanism that works directly with search results
+  // when we can't rely on URL fetching due to routing/path issues
+  
+  if (typeof window === 'undefined') {
+    return "";
+  }
+  
+  try {
+    // Look for the element on the page that might match this URL
+    // This works when the search is being done on the same page that contains the content
+    const linkElements = Array.from(document.querySelectorAll('a[href]'));
+    const matchingLinks = linkElements.filter(link => {
+      const href = link.getAttribute('href');
+      return href && (href === url || url.includes(href));
+    });
+    
+    if (matchingLinks.length > 0) {
+      // Try to find the closest article or content container
+      let closestContent = null;
+      for (const link of matchingLinks) {
+        let parent = link.parentElement;
+        while (parent) {
+          if (parent.tagName === 'ARTICLE' || 
+              parent.classList.contains('markdown') ||
+              parent.classList.contains('docItemContainer') ||
+              parent.classList.contains('theme-doc-markdown')) {
+            closestContent = parent;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        if (closestContent) break;
+      }
+      
+      if (closestContent) {
+        return closestContent.textContent || "";
+      }
+    }
+    
+    return "";
+  } catch (e) {
     return "";
   }
 }
@@ -234,18 +326,110 @@ export async function retrieveDocumentContent(
 ): Promise<string[]> {
   if (!searchResults || searchResults.length === 0) return [];
 
-  // Rank results by relevance
-  const rankedResults = rankSearchResultsByRelevance(query, searchResults);
-  const topResults = rankedResults.slice(0, 4);
-
-  // Fetch content from each document URL in parallel
-  const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
-  const contents = await Promise.all(contentPromises);
-
-  // Check for llms.txt file if option is explicitly enabled
+  // Take top 5 results for better coverage
+  const topResults = searchResults.slice(0, 5);
+  
+  // First attempt: Try to extract content directly from search results
+  // This is more reliable as it doesn't depend on URL fetching
+  const contents: string[] = [];
+  
+  // 1. Extract from search result data
+  for (const result of topResults) {
+    let content = "";
+    
+    // Add title and hierarchy info for context
+    if (result.hierarchy) {
+      if (result.hierarchy.lvl0) content += `# ${result.hierarchy.lvl0}\n`;
+      if (result.hierarchy.lvl1) content += `## ${result.hierarchy.lvl1}\n`;
+      if (result.hierarchy.lvl2) content += `### ${result.hierarchy.lvl2}\n`;
+      if (result.hierarchy.lvl3) content += `#### ${result.hierarchy.lvl3}\n`;
+      content += "\n";
+    }
+    
+    // Add URL for reference
+    content += `URL: ${result.url}\n\n`;
+    
+    // Extract content from snippets (most important for RAG)
+    if (result._snippetResult?.content?.value) {
+      // Format snippet content, converting emphasis tags to markdown
+      const snippet = result._snippetResult.content.value
+        .replace(/<em>/g, "**")
+        .replace(/<\/em>/g, "**")
+        .replace(/<(?:.|\n)*?>/g, "");
+      
+      content += `${snippet}\n\n`;
+    }
+    
+    // Add full content if available
+    if (result.content) {
+      content += `${result.content}\n\n`;
+    }
+    
+    // Detect if we're missing content
+    if (!result._snippetResult?.content?.value && !result.content) {
+      // Try to extract additional information from highlight results
+      if (result._highlightResult) {
+        if (result._highlightResult.content?.value) {
+          const highlightContent = result._highlightResult.content.value
+            .replace(/<em>/g, "**")
+            .replace(/<\/em>/g, "**")
+            .replace(/<(?:.|\n)*?>/g, "");
+          content += `${highlightContent}\n\n`;
+        }
+      }
+    }
+    
+    if (content.trim() !== "") {
+      contents.push(content);
+    }
+  }
+  
+  // If content is still missing, try direct URL fetching
+  if (contents.length === 0 || contents.some(content => 
+      content.split('\n').filter(line => line.trim() !== '').length <= 3)) {
+    
+    // Fetch content from each document URL in parallel (fallback)
+    const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
+    const fetchedContents = await Promise.all(contentPromises);
+    
+    // Process and combine fetched content with what we already have
+    fetchedContents.forEach((fetchedContent, index) => {
+      if (fetchedContent && fetchedContent.trim() !== "") {
+        if (index < contents.length) {
+          // We have some content but it might be minimal, so append fetched content
+          const existingLines = contents[index].split('\n').filter(line => line.trim() !== '').length;
+          if (existingLines <= 3) {
+            contents[index] += `\nAdditional fetched content:\n${fetchedContent}`;
+          }
+        } else {
+          // We don't have any content for this index yet
+          let enhancedContent = "";
+          
+          // Add title and hierarchy if available
+          const result = topResults[index];
+          if (result.hierarchy) {
+            if (result.hierarchy.lvl0) enhancedContent += `# ${result.hierarchy.lvl0}\n`;
+            if (result.hierarchy.lvl1) enhancedContent += `## ${result.hierarchy.lvl1}\n`;
+            if (result.hierarchy.lvl2) enhancedContent += `### ${result.hierarchy.lvl2}\n`;
+            if (result.hierarchy.lvl3) enhancedContent += `#### ${result.hierarchy.lvl3}\n`;
+            enhancedContent += "\n";
+          }
+          
+          // Add URL for reference
+          enhancedContent += `URL: ${result.url}\n\n`;
+          
+          // Add the fetched content
+          enhancedContent += fetchedContent;
+          
+          contents.push(enhancedContent);
+        }
+      }
+    });
+  }
+  
+  // 3. Check for llms.txt file if option is enabled
   if (options?.includeLlmsFile === true) {
     try {
-      // Attempt to fetch the llms.txt file from the root of the site
       const llmsResponse = await fetch('/llms.txt');
       if (llmsResponse.ok) {
         const llmsContent = await llmsResponse.text();
@@ -255,24 +439,60 @@ export async function retrieveDocumentContent(
         }
       }
     } catch (error) {
-      console.log('llms.txt file not found or cannot be loaded:', error);
-      // Continue without the file if not available
+      // Silently handle error
     }
   }
-
+  
+  // Verify we have actual content
+  let contentLengths = contents.map(content => {
+    const lines = content.split('\n').filter(line => line.trim() !== '').length;
+    return {length: content.length, lines: lines};
+  });
+  
+  // Try direct page fetch if content still seems minimal
+  if (contentLengths.some(stats => stats.lines <= 3 || stats.length < 100)) {
+    
+    // Set up more aggressive content extraction
+    await Promise.all(topResults.map(async (result, index) => {
+      try {
+        // Only fetch for minimal content
+        if (index < contentLengths.length && 
+            (contentLengths[index].lines <= 3 || contentLengths[index].length < 100)) {
+          const directResponse = await fetch(result.url);
+          if (directResponse.ok) {
+            const htmlText = await directResponse.text();
+            const extractedContent = extractContentFromHTML(htmlText);
+            
+            if (extractedContent && extractedContent.trim() !== "") {
+              // Replace or append?
+              if (contentLengths[index].lines <= 3) {
+                // Content is very minimal, replace it completely
+                let enhancedContent = "";
+                
+                // Keep the header
+                const headerLines = contents[index].split('\n').slice(0, 4).join('\n');
+                enhancedContent = headerLines + "\n\n" + extractedContent;
+                
+                contents[index] = enhancedContent;
+              } else {
+                // Content has some substance, append the extracted content
+                contents[index] += `\n\nAdditional content from direct fetch:\n${extractedContent}`;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Silently handle error
+      }
+    }));
+  }
+  
   // Process and return non-empty content
-  return contents
-    .filter(content => content.trim() !== "")
-    .map(content => {
-      // Process the content to enhance the extraction of key information
-      const processedContent = processDocumentContent(content);
-
-      // Chunk longer content to handle large documents
-      const chunks = chunkText(processedContent, 2000);
-
-      // For simplicity, we'll use just the first chunk for now
-      return chunks[0];
-    });
+  return contents.map(content => {
+    // Chunk longer content to handle large documents
+    const chunks = chunkText(content, 2000);
+    return chunks[0]; // Use first chunk for simplicity
+  });
 }
 
 /**
@@ -283,56 +503,86 @@ export function generateFallbackContent(searchResults: InternalDocSearchHit[], q
     return [];
   }
 
-  // Score and rank results by relevance first
-  const rankedResults = rankSearchResultsByRelevance(query, searchResults);
+  // Use the top 5 results
+  const topResults = searchResults.slice(0, 5);
 
-  return rankedResults.slice(0, 5).map((result) => {
+  return topResults.map((result) => {
     // Create a structured representation of the search result
     let content = "";
 
-    // Add the title and path information
+    // Add the title and hierarchy information
     if (result.hierarchy) {
-      const title = result.hierarchy.lvl0 || "";
-      const subtitle = result.hierarchy.lvl1 || "";
-      content += `# ${title}\n## ${subtitle}\n\n`;
+      if (result.hierarchy.lvl0) content += `# ${result.hierarchy.lvl0}\n`;
+      if (result.hierarchy.lvl1) content += `## ${result.hierarchy.lvl1}\n`;
+      if (result.hierarchy.lvl2) content += `### ${result.hierarchy.lvl2}\n`;
+      if (result.hierarchy.lvl3) content += `#### ${result.hierarchy.lvl3}\n`;
+      content += "\n";
     }
 
-    // Add the URL
+    // Add the URL for reference
     content += `URL: ${result.url}\n\n`;
 
-    // Add snippet if available - focus on extracting highlighted parts
+    // Extract the most relevant information from the search result
+    
+    // 1. Extract content from highlights in snippets
     if (result._snippetResult?.content?.value) {
       const snippet = result._snippetResult.content.value;
-
-      // Extract text surrounding the <em> highlighted parts for better context
-      const highlights = snippet.split("<em>");
-      if (highlights.length > 1) {
-        content += "HIGHLIGHTED CONTENT:\n";
-        for (let i = 1; i < highlights.length; i++) {
-          const parts = highlights[i].split("</em>");
-          if (parts.length > 0) {
-            // Get the highlighted term and some context around it
-            const highlightedTerm = parts[0];
-            const contextAfter = parts[1]?.split(".")[0] || "";
-            const contextBefore = highlights[i - 1]?.split(".").slice(-1)[0] || "";
-
-            content += `- ${contextBefore} *${highlightedTerm}* ${contextAfter}.\n`;
-          }
-        }
-        content += "\n";
-      } else {
-        // If no highlights, just use the whole snippet
-        content += `${snippet}\n\n`;
-      }
+      
+      // Convert HTML to Markdown format for better readability
+      const markdownSnippet = snippet
+        .replace(/<em>/g, "**")  // Convert emphasis to bold
+        .replace(/<\/em>/g, "**")
+        .replace(/<(?:.|\n)*?>/g, ""); // Remove other HTML tags
+      
+      content += `${markdownSnippet}\n\n`;
     }
-
-    // Add text content if available
+    
+    // 2. Add full content if available
     if (result.content) {
       content += `${result.content}\n\n`;
+    }
+    
+    // 3. Add any available headings that might provide additional context
+    const headings = [];
+    if (result._highlightResult?.hierarchy) {
+      // Check each heading level directly
+      const hierarchy = result._highlightResult.hierarchy;
+      
+      // Safely access each level with proper type checking
+      if (hierarchy.lvl1?.value) {
+        headings.push(cleanHighlightHTML(hierarchy.lvl1.value));
+      }
+      if (hierarchy.lvl2?.value) {
+        headings.push(cleanHighlightHTML(hierarchy.lvl2.value));
+      }
+      if (hierarchy.lvl3?.value) {
+        headings.push(cleanHighlightHTML(hierarchy.lvl3.value));
+      }
+      if (hierarchy.lvl4?.value) {
+        headings.push(cleanHighlightHTML(hierarchy.lvl4.value));
+      }
+    }
+    
+    if (headings.length > 0) {
+      content += "Related headings:\n";
+      headings.forEach(heading => {
+        content += `- ${heading}\n`;
+      });
+      content += "\n";
     }
 
     return content;
   });
+}
+
+/**
+ * Helper function to clean HTML from highlighted text
+ */
+function cleanHighlightHTML(text: string): string {
+  return text
+    .replace(/<em>/g, "**")
+    .replace(/<\/em>/g, "**")
+    .replace(/<(?:.|\n)*?>/g, "");
 }
 
 /**
@@ -364,7 +614,14 @@ export const DEFAULT_RESPONSE_GUIDELINES = `FORMAT YOUR RESPONSE AS MARKDOWN: Ge
  - NEVER use HTML tags - use only pure markdown syntax
  - IMPORTANT: Always include proper language specifier for code blocks to ensure syntax highlighting works
  - Format tables using markdown table syntax
- - For complex layouts and formatting, rely on standard markdown features rather than HTML`;
+ - For complex layouts and formatting, rely on standard markdown features rather than HTML
+ 
+CODE PRESERVATION RULES:
+ - NEVER modify, edit, simplify, or reformat ANY code examples from the documentation
+ - Include complete code snippets exactly as they appear in the documentation
+ - Preserve all comments, indentation, and formatting in code examples
+ - If documentation shows partial code with ellipses (...), maintain those indicators
+ - Do not truncate or abbreviate code examples to save space`;
 
 /**
  * Creates a system prompt for use with OpenAI
@@ -390,7 +647,7 @@ RESPONSE GUIDELINES:
 1. BE HELPFUL: Always try to provide SOME guidance, even when the documentation doesn't contain a perfect answer.
 2. PRIORITIZE USER SUCCESS: Focus on helping the user accomplish their task.
 3. USE DOCUMENTATION FIRST: Base your answers primarily on the provided documentation snippets.
-4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available.
+4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available. NEVER modify code examples - include them exactly as they appear in the documentation.
 5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps.
 6. BE HONEST: If you truly can't provide an answer, suggest relevant concepts or documentation sections that might help instead.
 7. ${responseGuidelines}
@@ -436,10 +693,12 @@ export function createUserPrompt(
       .join("\n");
     
     // Replace tokens in the template
-    return customPrompt
+    const finalPrompt = customPrompt
       .replace(/\{query\}/g, query)
       .replace(/\{context\}/g, contextContent)
       .replace(/\{sources\}/g, formattedResults);
+    
+    return finalPrompt;
   }
 
   // Use default prompt format
@@ -465,7 +724,7 @@ export function createUserPrompt(
     })
     .join("\n\n");
 
-  return `The user's question is: "${query}"
+  const finalPrompt = `The user's question is: "${query}"
 
 Here's content from the most relevant documentation sections:
 
@@ -476,8 +735,106 @@ ${formattedResults}
 
 Based on the above documentation, provide the most helpful answer you can to the user's question. Remember:
 1. Include ALL relevant code examples from the documentation
-2. If you can't find a direct answer, still provide guidance based on similar concepts
-3. Suggest specific next steps the user could take
-4. Keep your explanation concise but thorough
-5. Link to specific documentation pages when relevant`;
+2. IMPORTANT: Preserve ALL code snippets EXACTLY as they appear - do not modify, reformat, or simplify them
+3. If you can't find a direct answer, still provide guidance based on similar concepts
+4. Suggest specific next steps the user could take
+5. Keep your explanation concise but thorough
+6. Link to specific documentation pages when relevant`;
+  
+  return finalPrompt;
+}
+
+/**
+ * Summarize document content using OpenAI to make it more focused on the query
+ */
+export async function summarizeContentWithAI(
+  query: string,
+  documentContents: string[],
+  apiKey: string,
+  options?: {
+    model?: string;
+    maxTokens?: number;
+  }
+): Promise<string[]> {
+  if (!documentContents.length || !apiKey) {
+    return documentContents;
+  }
+  
+  try {
+    // Import OpenAI dynamically to avoid server-side issues
+    const { OpenAI } = await import('openai');
+    
+    const openai = new OpenAI({
+      apiKey: apiKey,
+      dangerouslyAllowBrowser: true,
+    });
+    
+    const summarizedContents: string[] = [];
+    
+    // Process each document content separately to maintain context
+    for (const content of documentContents) {
+      // Skip empty content
+      if (!content.trim()) {
+        continue;
+      }
+      
+      const systemPrompt = `You are a documentation summarizer that extracts the most relevant information for a user query.
+Your task is to process documentation content and return a concise summary that:
+
+IMPORTANT CODE PRESERVATION RULES:
+1. ALL CODE BLOCKS AND SNIPPETS MUST BE PRESERVED EXACTLY AS THEY APPEAR - Do not modify, summarize, or reformat ANY code
+2. Code enclosed in backticks (like \`code\` or \`\`\`javascript ... \`\`\`) must remain completely unchanged
+3. If code contains comments, preserve them exactly as they appear
+
+CONTENT SUMMARIZATION RULES:
+1. Maintain all headings, structure, and formatting in the original document
+2. Keep all URLs and references intact
+3. Focus on information that specifically addresses the user query
+4. Summarize explanatory text to be more concise while preserving meaning
+5. Remove any irrelevant or redundant information
+6. Preserve all technical details, parameters, and important specifications
+7. Return ONLY the summarized content with no meta-commentary or introductions`;
+
+      const userPrompt = `User query: "${query}"
+      
+Here is the documentation content to summarize:
+
+${content}
+
+Return a concise summary that focuses on information relevant to the user's query.
+CRITICAL: Preserve ALL code blocks and snippets EXACTLY as they appear without any modifications.
+If in doubt about whether something is code, preserve it exactly as written.
+Preserve all headings, technical details, and URLs.`;
+
+      const response = await openai.chat.completions.create({
+        model: options?.model || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: userPrompt,
+          },
+        ],
+        max_tokens: options?.maxTokens || 1000,
+        temperature: 0.3, // Low temperature for faithful summarization
+      });
+      
+      const summarizedContent = response.choices[0]?.message?.content?.trim();
+      
+      if (summarizedContent) {
+        summarizedContents.push(summarizedContent);
+      } else {
+        // Fall back to original content if summarization fails
+        summarizedContents.push(content);
+      }
+    }
+    
+    return summarizedContents;
+  } catch (error) {
+    // Fall back to original content on error
+    return documentContents;
+  }
 } 

@@ -58,7 +58,7 @@ module.exports = {
   plugins: [
     // ...other plugins
     './src/plugins/env-variables-plugin',
-};
+];
 ```
 
 ### 4. Swizzle the SearchBar component
@@ -268,6 +268,7 @@ The `prompts` object configures how prompts are generated for the AI:
 | `maxDocuments` | number | No | Maximum number of documents to include in context (default: `4`) |
 | `highlightCode` | boolean | No | Whether to include code blocks separately in the prompt |
 | `includeLlmsFile` | boolean | No | Whether to include `llms.txt` from the site root if available. This file provides additional context for AI responses. Enabled by default, set to `false` to disable. |
+| `useSummarization` | boolean | No | Whether to use AI-based summarization before sending content to the main LLM. This shrinks and focuses the content to be more relevant to the query. (default: `false`) |
 
 ### Event Callbacks
 
@@ -404,6 +405,44 @@ The `llms.txt` file is a plain text file you can place at the root of your Docus
 1. Create a file named `llms.txt` in your site's `static/` directory (so it gets copied to the root of your built site)
 2. Add important information about your product/service that the AI should always know about
 3. The feature is enabled by default. If you need to disable it, set `includeLlmsFile: false` in your AI configuration
+
+## AI Content Summarization
+
+To enhance the quality of AI responses, you can enable content summarization that uses a smaller AI model to first process and focus the retrieved content before sending it to the main LLM.
+
+### How Content Summarization Works
+
+When enabled, the content retrieved from your documentation pages is sent to an AI model which:
+
+1. Summarizes the content while preserving key information
+2. Focuses the content specifically on the user's query
+3. Maintains all code examples and technical details
+4. Removes irrelevant information
+
+This process creates more targeted context for the main LLM, resulting in more accurate and concise answers. By default, the system uses the same model and token settings as configured for the main answer generation, ensuring consistency and quality in the summarization process.
+
+### Example Configuration with Summarization
+
+```jsx
+// In your SearchBar component
+const aiConfig = {
+  openAI: {
+    apiKey: window.OPENAI_API_KEY || "",
+    model: "gpt-4.1",
+    maxTokens: 10000,
+    temperature: 0.3,
+  },
+  prompts: {
+    siteName: "Your Site Name",
+    // Enable AI summarization of content before sending to main LLM
+    useSummarization: true,
+    // Other prompt options...
+  },
+  // Other configuration...
+};
+
+return <DocusaurusAISearch algoliaConfig={algolia} aiConfig={aiConfig} />;
+```
 
 ## Utility Functions
 
