@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "1.5.0",
+    "version": "2.0.1",
     "description": "AI-enhanced search component for Docusaurus using OpenAI",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -12,10 +12,7 @@
         "build": "tsc && npm run copy-css",
         "copy-css": "cp src/styles.css dist/",
         "prepare": "npm run build",
-        "lint": "eslint src --ext .ts,.tsx",
-        "test": "jest",
-        "test:watch": "jest --watch",
-        "test:coverage": "jest --coverage"
+        "lint": "eslint src --ext .ts,.tsx"
     },
     "repository": {
         "type": "git",
@@ -39,7 +36,8 @@
     "dependencies": {
         "@docsearch/react": "^3.0.0",
         "algoliasearch": "^4.14.0",
-        "openai": "^4.0.0"
+        "openai": "^4.0.0",
+        "react-markdown": "^10.1.0"
     },
     "devDependencies": {
         "@docsearch/css": "^3.9.0",
