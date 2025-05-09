@@ -173,7 +173,7 @@ function ResultsFooter({
  * Docusaurus AI Search component
  */
 export function DocusaurusAISearch({
-  algoliaConfig,
+  themeConfig,
   aiConfig
 }: DocusaurusAISearchProps): JSX.Element {
   const { 
@@ -187,7 +187,7 @@ export function DocusaurusAISearch({
     searchPagePath,
     placeholder,
     translations
-  } = algoliaConfig;
+  } = themeConfig.algolia;
   
   const navigator = useNavigator({ externalUrlRegex });
   const computedSearchParameters = useSearchParameters({ contextualSearch, searchParameters });
@@ -511,6 +511,7 @@ export function DocusaurusAISearch({
           onClose={() => setShowAIModal(false)}
           searchResults={searchResults}
           config={aiConfig}
+          themeConfig={themeConfig}
         />
       )}
     </div>

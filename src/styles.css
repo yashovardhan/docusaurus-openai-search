@@ -1,4 +1,4 @@
-/* AI-enhanced Search Bar Styles - Minimized version */
+/* AI-enhanced Search Bar Styles */
 .docusaurus-openai-search {
   /* Use Docusaurus font family and color */
   font-family: var(--ifm-font-family-base);
@@ -70,7 +70,6 @@
   z-index: 100 !important;
 }
 
-/* Make sure our search button also has a high z-index */
 .docusaurus-openai-search .DocSearch-Button {
   z-index: 200 !important;
   position: relative;
@@ -423,4 +422,72 @@
 /* Removing old admonition styles */
 .admonition {
   display: none;
+}
+
+/* Admonition styles using Docusaurus variables */
+.markdown-body blockquote {
+  margin-bottom: 1em;
+  padding: 15px 30px 15px 15px;
+  border-radius: var(--ifm-alert-border-radius);
+  border-left: 8px solid var(--ifm-color-emphasis-300);
+  background-color: var(--ifm-alert-background-color);
+  color: var(--ifm-font-color-base);
+  position: relative;
+}
+
+.markdown-body blockquote p:first-child strong:first-child {
+  display: block;
+  margin-bottom: 0.5em;
+  font-weight: var(--ifm-font-weight-bold);
+  font-size: 1em;
+}
+
+/* Note */
+.markdown-body blockquote.note {
+  background-color: var(--ifm-color-info-contrast-background);
+  border-left-color: var(--ifm-color-info);
+}
+
+.markdown-body blockquote.note strong:first-child {
+  color: var(--ifm-color-info);
+}
+
+/* Tip */
+.markdown-body blockquote.tip {
+  background-color: var(--ifm-color-success-contrast-background);
+  border-left-color: var(--ifm-color-success);
+}
+
+.markdown-body blockquote.tip strong:first-child {
+  color: var(--ifm-color-success);
+}
+
+/* Warning */
+.markdown-body blockquote.warning {
+  background-color: var(--ifm-color-warning-contrast-background);
+  border-left-color: var(--ifm-color-warning);
+}
+
+.markdown-body blockquote.warning strong:first-child {
+  color: var(--ifm-color-warning);
+}
+
+/* Danger */
+.markdown-body blockquote.danger {
+  background-color: var(--ifm-color-danger-contrast-background);
+  border-left-color: var(--ifm-color-danger);
+}
+
+.markdown-body blockquote.danger strong:first-child {
+  color: var(--ifm-color-danger);
+}
+
+/* Support for color scheme variants */
+.docusaurus-openai-search .respect-color-scheme .markdown-body {
+  color-scheme: light dark;
+}
+
+/* Support for hideable sidebar layouts */
+.docusaurus-openai-search .hideable-sidebar .markdown-body {
+  scroll-padding-top: var(--ifm-navbar-height);
 } 
