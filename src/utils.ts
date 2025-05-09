@@ -242,8 +242,8 @@ export async function retrieveDocumentContent(
   const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
   const contents = await Promise.all(contentPromises);
 
-  // Check for llms.txt file if option is enabled (default to true)
-  if (options?.includeLlmsFile !== false) {
+  // Check for llms.txt file if option is explicitly enabled
+  if (options?.includeLlmsFile === true) {
     try {
       // Attempt to fetch the llms.txt file from the root of the site
       const llmsResponse = await fetch('/llms.txt');
