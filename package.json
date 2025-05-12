@@ -36,7 +36,7 @@
     "dependencies": {
         "@docsearch/react": "^3.0.0",
         "algoliasearch": "^4.14.0",
-        "openai": "^4.0.0",
+        "openai": "^4.98.0",
         "react-markdown": "^10.1.0"
     },
     "devDependencies": {
