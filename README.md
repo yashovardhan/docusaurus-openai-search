@@ -90,6 +90,8 @@ export default function SearchBar() {
       // Enable AI summarization of content before sending to main LLM
       useSummarization: true,
     },
+    // Enable detailed logging for debugging (disable in production)
+    enableLogging: false,
   };
   
   return <DocusaurusAISearch algoliaConfig={algolia} aiConfig={aiConfig} />;
@@ -210,6 +212,7 @@ The `aiConfig` prop configures the AI-powered search features:
 | `prompts` | object | No | Prompt generation and content handling options |
 | `enabled` | boolean | No | Enable or disable AI search features (default: `true`) |
 | `onAIQuery` | function | No | Callback function when an AI query is made |
+| `enableLogging` | boolean | No | Enable detailed logging for debugging RAG pipeline (default: `false`) |
 
 ### OpenAI Options
 
@@ -425,6 +428,138 @@ const aiConfig = {
 
 return <DocusaurusAISearch algoliaConfig={algolia} aiConfig={aiConfig} />;
 ```
+
+## Debugging with enableLogging
+
+The `enableLogging` parameter provides comprehensive logging throughout the RAG (Retrieval-Augmented Generation) pipeline to help you debug and optimize your AI search implementation.
+
+### Enabling Debug Logging
+
+To enable detailed logging, set `enableLogging: true` in your AI configuration:
+
+```jsx
+const aiConfig = {
+  openAI: {
+    proxyUrl: "https://your-backend-url.com",
+    model: "gpt-4",
+    maxTokens: 10000,
+    temperature: 0.3,
+  },
+  // Enable detailed logging
+  enableLogging: true,
+  // Other configuration...
+};
+```
+
+### What Gets Logged
+
+When logging is enabled, you'll see detailed information about:
+
+1. **Search Query Processing**
+   - The user's query
+   - Number of search results from Algolia
+   - Details about each search result (URL, title, snippet)
+
+2. **Content Retrieval**
+   - URLs being fetched
+   - Success/failure status of each fetch
+   - Content length and preview
+   - Fallback mechanisms when direct fetching fails
+   - llms.txt file retrieval (if enabled)
+
+3. **RAG Content Preparation**
+   - Number of documents being processed
+   - Length and preview of each document
+   - Content verification and quality checks
+
+4. **Prompt Generation**
+   - System prompt (full text)
+   - User prompt (full text)
+   - Total prompt length
+   - Document count included in context
+
+5. **API Requests**
+   - Full request payload sent to the proxy
+   - Model parameters (temperature, max tokens, etc.)
+   - Response data from OpenAI
+
+6. **Performance Metrics**
+   - Time taken for each operation
+   - Content summarization metrics (if enabled)
+   - Compression ratios
+
+### Example Log Output
+
+```
+[AI Search] Starting document content retrieval for query: "how to install"
+[AI Search] Query: "how to install"
+  Number of search results: 5
+  Search results: [
+    { index: 0, url: '/docs/installation', title: 'Installation Guide', snippet: 'Install the package using npm...' },
+    ...
+  ]
+[AI Search] Processing top 5 search results
+[AI Search] Fetching document content from: /docs/installation
+[AI Search] Content Retrieval: /docs/installation
+  Success: true
+  Content length: 2456
+  Content preview: # Installation Guide\n\nTo install the package...
+[AI Search] Performance - fetchDocumentContent(/docs/installation): 125ms
+[AI Search] RAG Content Preparation
+  Number of documents: 3
+  Document 1: { length: 2456, preview: '# Installation Guide...' }
+  ...
+[AI Search] Creating user prompt for query: "how to install"
+[AI Search] Generated user prompt
+  queryLength: 14
+  contextLength: 5234
+  totalPromptLength: 5248
+  documentCount: 3
+[AI Search] Creating chat completion through proxy
+  model: gpt-4
+  messageCount: 2
+  maxTokens: 10000
+  temperature: 0.3
+[AI Search] API Request to https://your-backend-url.com/api/chat/completions
+  Payload: { model: 'gpt-4', messages: [...], max_tokens: 10000, temperature: 0.3 }
+[AI Search] API Response
+  Response: { choices: [...], usage: { total_tokens: 1234 } }
+  Generated answer length: 856
+[AI Search] Performance - Proxy request to /api/chat/completions: 2341ms
+```
+
+### Using Logs for Optimization
+
+The detailed logs can help you:
+
+1. **Identify Content Retrieval Issues**
+   - See which documents fail to load
+   - Understand why certain content isn't being included
+   - Debug URL routing problems
+
+2. **Optimize Prompt Size**
+   - Monitor total prompt lengths
+   - Adjust `maxDocuments` if prompts are too large
+   - Fine-tune content summarization settings
+
+3. **Improve Response Quality**
+   - See exactly what content the AI receives
+   - Identify missing or incomplete documentation
+   - Adjust system prompts based on actual usage
+
+4. **Performance Tuning**
+   - Identify slow operations
+   - Optimize content retrieval strategies
+   - Consider enabling content summarization for large documents
+
+### Production Considerations
+
+Remember to disable logging in production (`enableLogging: false`) as it:
+- Generates significant console output
+- May impact performance slightly
+- Could expose sensitive information in browser console
+
+Use logging primarily during development and testing phases.
 
 ## Utility Functions
 

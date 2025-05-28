@@ -1,5 +1,6 @@
 import { InternalDocSearchHit } from '@docsearch/react';
 import { DocumentContent, RankedSearchResult } from './types';
+import { getLogger } from './utils/logger';
 
 /**
  * Tracks AI queries for analytics purposes
@@ -22,11 +23,18 @@ export function trackAIQuery(query: string, success: boolean = true): void {
  * Fetches the content of a document from its URL
  */
 export async function fetchDocumentContent(url: string): Promise<string> {
+  const logger = getLogger();
+  const startTime = Date.now();
+  
   try {
+    logger.log(`Fetching document content from: ${url}`);
+    
     // First, try direct HTML extraction from search results
     // This will work even when paths don't match perfectly
     const directContent = await extractContentFromSearchResult(url);
     if (directContent && directContent.trim() !== "") {
+      logger.logContentRetrieval(url, true, directContent);
+      logger.logPerformance(`fetchDocumentContent(${url})`, startTime);
       return directContent;
     }
     
@@ -39,6 +47,7 @@ export async function fetchDocumentContent(url: string): Promise<string> {
 
       if (urlObj.origin === window.location.origin) {
         path = urlObj.pathname;
+        logger.log(`Converted URL to path: ${path}`);
 
         // Handle typical Docusaurus routes
         if (path.endsWith("/")) {
@@ -54,28 +63,44 @@ export async function fetchDocumentContent(url: string): Promise<string> {
         if (path.includes("?")) {
           path = path.split("?")[0];
         }
+        
+        logger.log(`Final path for fetching: ${path}`);
       } else {
+        logger.log(`External URL detected, skipping: ${url}`);
         return "";
       }
     }
 
     const response = await fetch(path);
     if (!response.ok) {
+      logger.log(`Initial fetch failed with status: ${response.status}`);
+      
       // Try one more alternative approach - fetch without index.html
       if (path.endsWith('index.html')) {
         const altPath = path.replace('index.html', '');
+        logger.log(`Trying alternative path: ${altPath}`);
         const altResponse = await fetch(altPath);
         if (!altResponse.ok) {
+          logger.logContentRetrieval(url, false);
           return "";
         }
-        return extractContentFromHTML(await altResponse.text());
+        const content = extractContentFromHTML(await altResponse.text());
+        logger.logContentRetrieval(url, true, content);
+        logger.logPerformance(`fetchDocumentContent(${url})`, startTime);
+        return content;
       }
       
+      logger.logContentRetrieval(url, false);
       return "";
     }
 
-    return extractContentFromHTML(await response.text());
+    const content = extractContentFromHTML(await response.text());
+    logger.logContentRetrieval(url, true, content);
+    logger.logPerformance(`fetchDocumentContent(${url})`, startTime);
+    return content;
   } catch (error) {
+    logger.logError('fetchDocumentContent', error);
+    logger.logContentRetrieval(url, false);
     return "";
   }
 }
@@ -324,10 +349,20 @@ export async function retrieveDocumentContent(
   query: string,
   options?: { includeLlmsFile?: boolean }
 ): Promise<string[]> {
-  if (!searchResults || searchResults.length === 0) return [];
+  const logger = getLogger();
+  const startTime = Date.now();
+  
+  logger.log(`Starting document content retrieval for query: "${query}"`);
+  logger.logQuery(query, searchResults);
+  
+  if (!searchResults || searchResults.length === 0) {
+    logger.log('No search results provided');
+    return [];
+  }
 
   // Take top 5 results for better coverage
   const topResults = searchResults.slice(0, 5);
+  logger.log(`Processing top ${topResults.length} search results`);
   
   // First attempt: Try to extract content directly from search results
   // This is more reliable as it doesn't depend on URL fetching
@@ -381,12 +416,17 @@ export async function retrieveDocumentContent(
     
     if (content.trim() !== "") {
       contents.push(content);
+      logger.log(`Extracted content from search result ${result.url} (${content.length} chars)`);
     }
   }
+  
+  logger.log(`Initial content extraction: ${contents.length} documents with content`);
   
   // If content is still missing, try direct URL fetching
   if (contents.length === 0 || contents.some(content => 
       content.split('\n').filter(line => line.trim() !== '').length <= 3)) {
+    
+    logger.log('Content seems minimal, attempting direct URL fetching...');
     
     // Fetch content from each document URL in parallel (fallback)
     const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
@@ -400,6 +440,7 @@ export async function retrieveDocumentContent(
           const existingLines = contents[index].split('\n').filter(line => line.trim() !== '').length;
           if (existingLines <= 3) {
             contents[index] += `\nAdditional fetched content:\n${fetchedContent}`;
+            logger.log(`Appended fetched content to document ${index} (${fetchedContent.length} chars)`);
           }
         } else {
           // We don't have any content for this index yet
@@ -422,6 +463,7 @@ export async function retrieveDocumentContent(
           enhancedContent += fetchedContent;
           
           contents.push(enhancedContent);
+          logger.log(`Added new fetched content for document ${index} (${enhancedContent.length} chars)`);
         }
       }
     });
@@ -429,6 +471,7 @@ export async function retrieveDocumentContent(
   
   // 3. Check for llms.txt file if option is enabled
   if (options?.includeLlmsFile === true) {
+    logger.log('Checking for llms.txt file...');
     try {
       const llmsResponse = await fetch('/llms.txt');
       if (llmsResponse.ok) {
@@ -436,10 +479,13 @@ export async function retrieveDocumentContent(
         if (llmsContent.trim() !== '') {
           // Add the llms.txt content to the beginning for higher priority
           contents.unshift(`--- LLMS CONTEXT FILE ---\n${llmsContent}\n--- END LLMS CONTEXT ---`);
+          logger.log(`Added llms.txt content (${llmsContent.length} chars)`);
         }
+      } else {
+        logger.log('llms.txt file not found or not accessible');
       }
     } catch (error) {
-      // Silently handle error
+      logger.logError('Failed to fetch llms.txt', error);
     }
   }
   
@@ -449,8 +495,11 @@ export async function retrieveDocumentContent(
     return {length: content.length, lines: lines};
   });
   
+  logger.log('Content verification:', contentLengths);
+  
   // Try direct page fetch if content still seems minimal
   if (contentLengths.some(stats => stats.lines <= 3 || stats.length < 100)) {
+    logger.log('Some content still minimal, attempting aggressive content extraction...');
     
     // Set up more aggressive content extraction
     await Promise.all(topResults.map(async (result, index) => {
@@ -474,39 +523,51 @@ export async function retrieveDocumentContent(
                 enhancedContent = headerLines + "\n\n" + extractedContent;
                 
                 contents[index] = enhancedContent;
+                logger.log(`Replaced minimal content for document ${index} with extracted content (${extractedContent.length} chars)`);
               } else {
                 // Content has some substance, append the extracted content
                 contents[index] += `\n\nAdditional content from direct fetch:\n${extractedContent}`;
+                logger.log(`Appended extracted content to document ${index} (${extractedContent.length} chars)`);
               }
             }
           }
         }
       } catch (error) {
-        // Silently handle error
+        logger.logError(`Failed aggressive extraction for ${result.url}`, error);
       }
     }));
   }
   
   // Process and return non-empty content
-  return contents.map(content => {
+  const processedContents = contents.map(content => {
     // Chunk longer content to handle large documents
     const chunks = chunkText(content, 2000);
     return chunks[0]; // Use first chunk for simplicity
   });
+  
+  logger.logRAGContent(processedContents);
+  logger.logPerformance('retrieveDocumentContent', startTime);
+  
+  return processedContents;
 }
 
 /**
  * Fallback mechanism that provides search result information when document fetching fails
  */
 export function generateFallbackContent(searchResults: InternalDocSearchHit[], query: string): string[] {
+  const logger = getLogger();
+  logger.log(`Generating fallback content for query: "${query}" with ${searchResults.length} search results`);
+  
   if (!searchResults || searchResults.length === 0) {
+    logger.log('No search results available for fallback content');
     return [];
   }
 
   // Use the top 5 results
   const topResults = searchResults.slice(0, 5);
+  logger.log(`Using top ${topResults.length} results for fallback content`);
 
-  return topResults.map((result) => {
+  const fallbackContents = topResults.map((result, index) => {
     // Create a structured representation of the search result
     let content = "";
 
@@ -571,8 +632,12 @@ export function generateFallbackContent(searchResults: InternalDocSearchHit[], q
       content += "\n";
     }
 
+    logger.log(`Generated fallback content for result ${index + 1} (${result.url}): ${content.length} chars`);
     return content;
   });
+
+  logger.log(`Generated ${fallbackContents.length} fallback content pieces`);
+  return fallbackContents;
 }
 
 /**
@@ -624,38 +689,43 @@ CODE PRESERVATION RULES:
  - Do not truncate or abbreviate code examples to save space`;
 
 /**
- * Creates a system prompt for use with OpenAI
+ * Creates the system prompt for the AI
  */
 export function createSystemPrompt(options?: {
   systemPrompt?: string;
   siteName?: string;
   responseGuidelines?: string;
 }): string {
-  const responseGuidelines = options?.responseGuidelines || DEFAULT_RESPONSE_GUIDELINES;
-
+  const logger = getLogger();
+  
+  // If a custom system prompt is provided, use it directly
   if (options?.systemPrompt) {
-    return options.systemPrompt + `\n\n${responseGuidelines}`;
+    logger.log('Using custom system prompt');
+    return options.systemPrompt;
   }
-
-  const siteName = options?.siteName || 'Documentation';
   
-  // Use custom guidelines if provided, otherwise use defaults
-  
-  return `You are a helpful ${siteName} assistant. Your goal is to provide detailed, accurate information about ${siteName} based on the documentation provided.
+  const siteName = options?.siteName || 'this documentation';
+  const responseGuidelines = options?.responseGuidelines || `
+- Be concise but comprehensive
+- Use markdown formatting for better readability
+- Include code examples when relevant
+- Cite specific sections or pages when possible
+- If information is not available in the provided context, say so clearly`;
 
-RESPONSE GUIDELINES:
-1. BE HELPFUL: Always try to provide SOME guidance, even when the documentation doesn't contain a perfect answer.
-2. PRIORITIZE USER SUCCESS: Focus on helping the user accomplish their task.
-3. USE DOCUMENTATION FIRST: Base your answers primarily on the provided documentation snippets.
-4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available. NEVER modify code examples - include them exactly as they appear in the documentation.
-5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps.
-6. BE HONEST: If you truly can't provide an answer, suggest relevant concepts or documentation sections that might help instead.
-7. ${responseGuidelines}
-`;
+  const systemPrompt = `You are a helpful AI assistant specialized in answering questions about ${siteName}. 
+Your responses should be based solely on the documentation content provided to you.
+
+Guidelines for your responses:
+${responseGuidelines}
+
+Remember: Only answer based on the provided documentation context. Do not make up information.`;
+
+  logger.log('Generated system prompt with default template', { siteName, promptLength: systemPrompt.length });
+  return systemPrompt;
 }
 
 /**
- * Creates a user prompt with the query and documentation content
+ * Creates the user prompt with document context
  */
 export function createUserPrompt(
   query: string, 
@@ -667,81 +737,50 @@ export function createUserPrompt(
     highlightCode?: boolean;
   }
 ): string {
-  // Use custom prompt template if provided
+  const logger = getLogger();
+  logger.log(`Creating user prompt for query: "${query}"`);
+  
+  // If a custom user prompt is provided, use it directly
   if (options?.userPrompt) {
-    let customPrompt = options.userPrompt;
-    const maxDocs = options.maxDocuments || 4;
-    
-    // Prepare document content for substitution
-    const contextContent = documentContents
-      .slice(0, maxDocs)
-      .map((content, index) => {
-        const result = searchResults[index];
-        const title = result?.hierarchy?.lvl0 || "Document " + (index + 1);
-        return `--- START OF DOCUMENT: ${title} ---\n${content}\n--- END OF DOCUMENT ---\n`;
-      })
-      .join("\n\n");
-      
-    // Prepare source references for substitution
-    const formattedResults = searchResults
-      .slice(0, maxDocs)
-      .map((result, index) => {
-        const title = result.hierarchy?.lvl0 || "Document";
-        const subtitle = result.hierarchy?.lvl1 || "";
-        return `Source ${index + 1}: ${title} > ${subtitle}: ${result.url}`;
-      })
-      .join("\n");
-    
-    // Replace tokens in the template
-    const finalPrompt = customPrompt
-      .replace(/\{query\}/g, query)
-      .replace(/\{context\}/g, contextContent)
-      .replace(/\{sources\}/g, formattedResults);
-    
-    return finalPrompt;
+    logger.log('Using custom user prompt template');
+    return options.userPrompt
+      .replace('{query}', query)
+      .replace('{context}', documentContents.join('\n\n---\n\n'));
   }
-
-  // Use default prompt format
-  const maxDocs = options?.maxDocuments || 4;
   
-  // Format search results with titles and URLs
-  const formattedResults = searchResults
-    .slice(0, maxDocs)
-    .map((result, index) => {
-      const title = result.hierarchy?.lvl0 || "Document";
-      const subtitle = result.hierarchy?.lvl1 || "";
-      return `Source ${index + 1}: ${title} > ${subtitle}: ${result.url}`;
-    })
-    .join("\n");
-
-  // Prepare the content with source information
-  const contextContent = documentContents
-    .slice(0, maxDocs)
-    .map((content, index) => {
-      const result = searchResults[index];
-      const title = result?.hierarchy?.lvl0 || "Document " + (index + 1);
-      return `--- START OF DOCUMENT: ${title} ---\n${content}\n--- END OF DOCUMENT ---\n`;
-    })
-    .join("\n\n");
-
-  const finalPrompt = `The user's question is: "${query}"
-
-Here's content from the most relevant documentation sections:
-
-${contextContent}
-
-Source references:
-${formattedResults}
-
-Based on the above documentation, provide the most helpful answer you can to the user's question. Remember:
-1. Include ALL relevant code examples from the documentation
-2. IMPORTANT: Preserve ALL code snippets EXACTLY as they appear - do not modify, reformat, or simplify them
-3. If you can't find a direct answer, still provide guidance based on similar concepts
-4. Suggest specific next steps the user could take
-5. Keep your explanation concise but thorough
-6. Link to specific documentation pages when relevant`;
+  const maxDocs = options?.maxDocuments || 5;
+  const relevantDocs = documentContents.slice(0, maxDocs);
   
-  return finalPrompt;
+  logger.log(`Including ${relevantDocs.length} documents in context (max: ${maxDocs})`);
+  
+  // Build context from documents
+  let context = "Here is the relevant documentation content:\n\n";
+  
+  relevantDocs.forEach((content, index) => {
+    context += `--- Document ${index + 1} ---\n`;
+    context += content;
+    context += "\n\n";
+  });
+  
+  // Add search result URLs for reference
+  if (searchResults.length > 0) {
+    context += "Reference URLs:\n";
+    searchResults.slice(0, maxDocs).forEach((result, index) => {
+      const title = result.hierarchy?.lvl0 || result.hierarchy?.lvl1 || `Document ${index + 1}`;
+      context += `- ${title}: ${result.url}\n`;
+    });
+  }
+  
+  const userPrompt = `${context}\n\nBased on the documentation above, please answer the following question:\n\n"${query}"`;
+  
+  logger.log('Generated user prompt', { 
+    queryLength: query.length,
+    contextLength: context.length,
+    totalPromptLength: userPrompt.length,
+    documentCount: relevantDocs.length
+  });
+  
+  return userPrompt;
 }
 
 /**

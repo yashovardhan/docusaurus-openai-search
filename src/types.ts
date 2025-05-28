@@ -74,6 +74,8 @@ export interface DocusaurusAISearchConfig {
   enabled?: boolean;
   /** Function to call when an AI query is made, for analytics */
   onAIQuery?: (query: string, success: boolean) => void;
+  /** Enable detailed logging for debugging (logs content fetching, prompts, responses, etc.) */
+  enableLogging?: boolean;
 }
 
 /**

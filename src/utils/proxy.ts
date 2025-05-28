@@ -3,6 +3,7 @@
  */
 
 import { OpenAIOptions } from '../types';
+import { getLogger } from './logger';
 
 export interface ProxyRequestOptions {
   endpoint: string;
@@ -18,24 +19,44 @@ export async function makeProxyRequest(
   proxyUrl: string,
   options: ProxyRequestOptions
 ): Promise<any> {
+  const logger = getLogger();
   const url = `${proxyUrl}${options.endpoint}`;
   
-  const response = await fetch(url, {
+  logger.logAPIRequest(url, {
     method: options.method || 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    credentials: 'include' // Include cookies for session management if needed
+    headers: options.headers,
+    body: options.body
   });
+  
+  const startTime = Date.now();
+  
+  try {
+    const response = await fetch(url, {
+      method: options.method || 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      credentials: 'include' // Include cookies for session management if needed
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
-    throw new Error(error.error?.message || `Proxy request failed: ${response.statusText}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+      const errorMessage = error.error?.message || `Proxy request failed: ${response.statusText}`;
+      logger.logAPIResponse(null, { status: response.status, error: errorMessage });
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    logger.logAPIResponse(data);
+    logger.logPerformance(`Proxy request to ${options.endpoint}`, startTime);
+    
+    return data;
+  } catch (error) {
+    logger.logError(`Proxy request to ${options.endpoint}`, error);
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -46,6 +67,21 @@ export async function createProxyChatCompletion(
   messages: Array<{ role: string; content: string }>,
   options: Partial<OpenAIOptions>
 ): Promise<any> {
+  const logger = getLogger();
+  
+  logger.log('Creating chat completion through proxy', {
+    model: options.model || 'gpt-4',
+    messageCount: messages.length,
+    maxTokens: options.maxTokens || 2000,
+    temperature: options.temperature || 0.5
+  });
+  
+  // Log the full prompt being sent
+  logger.logPrompt(
+    messages.find(m => m.role === 'system')?.content || '',
+    messages.find(m => m.role === 'user')?.content || ''
+  );
+  
   return makeProxyRequest(proxyUrl, {
     endpoint: '/api/chat/completions',
     method: 'POST',
@@ -71,6 +107,15 @@ export async function createProxySummarization(
     systemPrompt?: string;
   }
 ): Promise<string> {
+  const logger = getLogger();
+  
+  logger.log('Creating content summarization through proxy', {
+    query,
+    contentCount: content.length,
+    totalContentLength: content.reduce((sum, c) => sum + c.length, 0),
+    model: options?.model || 'gpt-4'
+  });
+  
   const response = await makeProxyRequest(proxyUrl, {
     endpoint: '/api/summarize',
     method: 'POST',
@@ -83,5 +128,7 @@ export async function createProxySummarization(
     }
   });
 
+  logger.logSummarization(content, response.summary);
+  
   return response.summary;
 } 

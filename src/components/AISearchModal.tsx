@@ -8,6 +8,7 @@ import {
   createUserPrompt
 } from '../utils';
 import { createProxyChatCompletion, createProxySummarization } from '../utils/proxy';
+import { createLogger } from '../utils/logger';
 import '../styles.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -84,6 +85,11 @@ export function AISearchModal({
   
   // Reference to the markdown container
   const markdownRef = useRef<HTMLDivElement>(null);
+
+  // Initialize logger with enableLogging config
+  useEffect(() => {
+    createLogger(config?.enableLogging || false);
+  }, [config?.enableLogging]);
 
   // Get the proxy URL from config
   const proxyUrl = config?.openAI?.proxyUrl;

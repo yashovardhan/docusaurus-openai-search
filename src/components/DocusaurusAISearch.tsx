@@ -9,6 +9,7 @@ import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { AISearchModal } from './AISearchModal';
 import { rankSearchResultsByRelevance } from '../utils';
+import { createLogger } from '../utils/logger';
 import { DocusaurusAISearchProps } from '../types';
 import { InternalDocSearchHit } from '@docsearch/react';
 
@@ -188,6 +189,11 @@ export function DocusaurusAISearch({
     placeholder,
     translations
   } = themeConfig.algolia;
+  
+  // Initialize logger with enableLogging config
+  useEffect(() => {
+    createLogger(aiConfig?.enableLogging || false);
+  }, [aiConfig?.enableLogging]);
   
   const navigator = useNavigator({ externalUrlRegex });
   const computedSearchParameters = useSearchParameters({ contextualSearch, searchParameters });
