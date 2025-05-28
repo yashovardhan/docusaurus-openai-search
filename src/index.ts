@@ -4,8 +4,12 @@ import './styles.css';
 // Export main component
 export { DocusaurusAISearch } from './components/DocusaurusAISearch';
 
-// Export environment variables plugin
-export { default as envPlugin } from './envPlugin';
+// Export proxy utilities
+export { 
+  makeProxyRequest, 
+  createProxyChatCompletion, 
+  createProxySummarization 
+} from './utils/proxy';
 
 // Export configuration types
 export type { 
@@ -15,3 +19,6 @@ export type {
   UIOptions,
   PromptOptions
 } from './types';
+
+// Export proxy types
+export type { ProxyRequestOptions } from './utils/proxy';

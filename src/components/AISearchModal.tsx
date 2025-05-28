@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { OpenAI } from 'openai';
 import { AISearchModalProps } from '../types';
 import {
   trackAIQuery,
   retrieveDocumentContent,
   generateFallbackContent,
   createSystemPrompt,
-  createUserPrompt,
-  summarizeContentWithAI
+  createUserPrompt
 } from '../utils';
+import { createProxyChatCompletion, createProxySummarization } from '../utils/proxy';
 import '../styles.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -86,8 +85,8 @@ export function AISearchModal({
   // Reference to the markdown container
   const markdownRef = useRef<HTMLDivElement>(null);
 
-  // Get the API key from config or window global variable
-  const apiKey = config?.openAI?.apiKey || (typeof window !== 'undefined' ? window.OPENAI_API_KEY : '');
+  // Get the proxy URL from config
+  const proxyUrl = config?.openAI?.proxyUrl;
 
   // Get Prism theme for code highlighting
   const getPrismTheme = (): PrismTheme => {
@@ -214,19 +213,21 @@ export function AISearchModal({
         
         // Summarize content with AI if enabled in config
         let processedContent = retrievedContent;
-        if (config?.prompts?.useSummarization && apiKey) {
+        if (config?.prompts?.useSummarization && proxyUrl) {
           setRetrievalStatus('Optimizing document content...');
           
-          processedContent = await summarizeContentWithAI(
-            query, 
-            retrievedContent, 
-            apiKey, 
+          // Use proxy for summarization
+          const summary = await createProxySummarization(
+            proxyUrl,
+            query,
+            retrievedContent,
             {
-              // Use the same model as the main answer for consistency
-              model: config?.openAI?.model || 'gpt-4.1',
-              maxTokens: config?.openAI?.maxTokens || 2000
+              model: config?.openAI?.model || 'gpt-4',
+              maxTokens: config?.openAI?.maxTokens || 2000,
+              systemPrompt: config?.prompts?.systemPrompt
             }
           );
+          processedContent = [summary];
           
           setRetrievalStatus(modalTexts.generatingText);
         }
@@ -242,22 +243,11 @@ export function AISearchModal({
           }
         );
 
-        if (apiKey) {
-          // Create OpenAI client on demand
-          const openai = new OpenAI({
-            apiKey: apiKey,
-            dangerouslyAllowBrowser: true,
-          });
-
-          // For user prompt, show the beginning (query) and a summary of docs
-          // Now we're already showing the full prompt in createUserPrompt, so we can keep this short
-          const truncatedPrompt = userPrompt.split('\n').slice(0, 5).join('\n') + 
-            '\n[... Content from retrieved documents omitted for brevity ...]\n' +
-            userPrompt.split('\n').slice(-8).join('\n');
-
-          const response = await openai.chat.completions.create({
-            model: config?.openAI?.model || 'gpt-4.1',
-            messages: [
+        if (proxyUrl) {
+          // Use proxy for chat completion
+          const response = await createProxyChatCompletion(
+            proxyUrl,
+            [
               {
                 role: 'system',
                 content: systemPrompt,
@@ -267,9 +257,12 @@ export function AISearchModal({
                 content: userPrompt,
               },
             ],
-            max_tokens: config?.openAI?.maxTokens || 2000,
-            temperature: config?.openAI?.temperature || 0.5, // Lower temperature for more factual responses
-          });
+            {
+              model: config?.openAI?.model || 'gpt-4',
+              maxTokens: config?.openAI?.maxTokens || 2000,
+              temperature: config?.openAI?.temperature || 0.5,
+            }
+          );
 
           const generatedAnswer = response.choices[0]?.message?.content;
           
@@ -285,7 +278,7 @@ export function AISearchModal({
             trackAIQuery(query, true);
           }
         } else {
-          setError('OpenAI API key is not configured. Please check your configuration.');
+          setError('Proxy URL is not configured. Please check your configuration.');
         }
       } catch (err: any) {
         setError(err?.message || 'Failed to generate an answer. Please try again later.');
@@ -303,7 +296,7 @@ export function AISearchModal({
     }
 
     fetchAnswer();
-  }, [query, retrievedContent, searchResults, apiKey, isRetrying, config, modalTexts.generatingText]);
+  }, [query, retrievedContent, searchResults, proxyUrl, isRetrying, config, modalTexts.generatingText]);
 
   // Effect to handle markdown response
   useEffect(() => {

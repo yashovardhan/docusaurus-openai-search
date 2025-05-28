@@ -26,9 +26,9 @@ export interface PromptOptions {
  * OpenAI API options
  */
 export interface OpenAIOptions {
-  /** OpenAI API Key */
-  apiKey: string;
-  /** Model to use for AI search queries, defaults to gpt-4.1 */
+  /** Proxy URL - backend proxy service URL for secure API calls */
+  proxyUrl: string;
+  /** Model to use for AI search queries, defaults to gpt-4 */
   model: string;
   /** Maximum tokens to use in AI requests */
   maxTokens: number;
@@ -183,9 +183,6 @@ declare global {
   interface Window {
     // Google Analytics tracking function
     gtag?: (command: string, action: string, params: Record<string, any>) => void;
-    
-    // Global configuration for OpenAI API key
-    OPENAI_API_KEY?: string;
   }
 }
 

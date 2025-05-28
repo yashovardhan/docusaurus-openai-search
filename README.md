@@ -9,6 +9,7 @@ AI-enhanced search component for Docusaurus using OpenAI's API to provide AI-pow
 - Extracts content from documentation pages for contextual answers
 - Customizable prompts, models, and UI
 - Full TypeScript support
+- Secure backend proxy for API key protection
 
 ## Installation
 
@@ -18,50 +19,33 @@ npm install docusaurus-openai-search
 
 ## Setup
 
-### 1. Create an environment file
+### 1. Deploy the Backend Proxy
 
-Create a `.env` file in your project root:
+For security, this plugin requires a backend proxy service to keep your OpenAI API key safe on the server side.
 
-```
-OPENAI_API_KEY=your_openai_api_key_here
-```
+The recommended backend proxy is available at [docusaurus-openai-search-backend](https://github.com/yashovardhan/docusaurus-openai-search-backend). It's a simple Node.js server that:
+- Keeps your OpenAI API key secure
+- Validates requests from your allowed domains
+- Provides rate limiting to prevent abuse
 
-### 2. Configure a custom plugin to fetch your environment variable
+Deploy it to any Node.js hosting service:
 
-Create a plugin in your src folder (or your default plugins folder), ideally like `src/plugins/env-variables-plugin/index.js` with the following code
+```bash
+# Clone the backend proxy repository
+git clone https://github.com/yashovardhan/docusaurus-openai-search-backend.git
+cd docusaurus-openai-search-backend
 
-```js
-// A Docusaurus plugin to provide environment variables to the client
+# Install and configure
+npm install
+cp .env.example .env
+# Edit .env with your OPENAI_API_KEY and ALLOWED_DOMAINS
 
-module.exports = function (context, options) {
-  return {
-    name: "docusaurus-env-variables-plugin",
-    injectHtmlTags() {
-      return {
-        headTags: [
-          {
-            tagName: "script",
-            innerHTML: `window.OPENAI_API_KEY = "${process.env.OPENAI_API_KEY || ""}"`,
-          },
-        ],
-      };
-    },
-  };
-};
+# Deploy to your preferred service (Vercel, Heroku, Railway, etc.)
 ```
 
-### 3. Add the path to plugin to your `docusaurus.config.js`:
+See the [docusaurus-openai-search-backend README](https://github.com/yashovardhan/docusaurus-openai-search-backend#readme) for deployment instructions.
 
-```js
-module.exports = {
-  // ...other config
-  plugins: [
-    // ...other plugins
-    './src/plugins/env-variables-plugin',
-];
-```
-
-### 4. Swizzle the SearchBar component
+### 2. Swizzle the SearchBar component
 
 Run the swizzle command and select SearchBar to eject:
 
@@ -69,7 +53,7 @@ Run the swizzle command and select SearchBar to eject:
 npm run swizzle
 ```
 
-### 5. Replace the SearchBar component
+### 3. Replace the SearchBar component
 
 Replace the content of the swizzled component (typically at `src/theme/SearchBar/index.js` or `index.tsx`) with:
 
@@ -85,14 +69,12 @@ export default function SearchBar() {
     },
   } = useDocusaurusContext();
 
-  const apiKey = typeof window !== "undefined" ? (window as any).OPENAI_API_KEY || "" : "";
-
   // AI search configuration
   const aiConfig = {
     // OpenAI API settings
     openAI: {
-      apiKey,
-      model: "gpt-4.1",
+      proxyUrl: "https://your-backend-url.com", // Required
+      model: "gpt-4",
       maxTokens: 10000,
       temperature: 0.3,
     },
@@ -105,8 +87,8 @@ export default function SearchBar() {
     // Prompt customization
     prompts: {
       siteName: "Your Site Name",
-      // Optional: Customize system prompt
-      systemPrompt: "You are a helpful assistant. Your goal is to provide detailed, accurate information about the documentation provided."
+      // Enable AI summarization of content before sending to main LLM
+      useSummarization: true,
     },
   };
   
@@ -223,7 +205,7 @@ The `aiConfig` prop configures the AI-powered search features:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `openAI` | object | No | OpenAI API settings |
+| `openAI` | object | Yes | OpenAI API settings |
 | `ui` | object | No | UI customization options |
 | `prompts` | object | No | Prompt generation and content handling options |
 | `enabled` | boolean | No | Enable or disable AI search features (default: `true`) |
@@ -235,8 +217,8 @@ The `openAI` object configures the OpenAI API settings:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `apiKey` | string | No | OpenAI API key (falls back to `window.OPENAI_API_KEY`) |
-| `model` | string | No | Model to use for AI search queries (default: `gpt-4.1`) |
+| `proxyUrl` | string | Yes | URL of your backend proxy service |
+| `model` | string | No | Model to use for AI search queries (default: `gpt-4`) |
 | `maxTokens` | number | No | Maximum tokens to use in AI requests (default: `2000`) |
 | `temperature` | number | No | Temperature for AI responses from 0-1 (default: `0.5`) |
 
@@ -427,8 +409,8 @@ This process creates more targeted context for the main LLM, resulting in more a
 // In your SearchBar component
 const aiConfig = {
   openAI: {
-    apiKey: window.OPENAI_API_KEY || "",
-    model: "gpt-4.1",
+    proxyUrl: "https://your-backend-url.com",
+    model: "gpt-4",
     maxTokens: 10000,
     temperature: 0.3,
   },
@@ -460,20 +442,42 @@ Parameters:
 
 ## Security Considerations
 
-- Never expose your OpenAI API key directly in client-side code without rate limiting
-- Consider implementing a server-side proxy for OpenAI requests 
+### Backend Proxy Security Features
+
+The backend proxy provides comprehensive security features:
+- **Domain-based access control**: Only whitelisted domains can access the proxy
+- **Rate limiting**: Configurable per IP/user to prevent abuse
+- **Request validation**: All requests are validated and sanitized
+- **Secure error handling**: No sensitive data in error messages
+- **Optional Redis caching**: Reduces API calls and improves performance
+- **Comprehensive logging**: For security auditing and monitoring
+
+### Best Practices
+
+1. **Domain Whitelisting**: Configure `ALLOWED_DOMAINS` in your proxy to only accept requests from your documentation site
+2. **HTTPS Only**: Always use HTTPS for both your documentation site and proxy service
+3. **Monitor Usage**: Set up logging and monitoring on your proxy to track usage and detect anomalies
+4. **Rate Limiting**: Configure appropriate rate limits based on your expected usage
+5. **Regular Updates**: Keep your proxy dependencies up to date
+
+### Additional Recommendations
+
 - Set usage limits on your OpenAI API key to prevent unexpected costs
-- For production environments, implement proper authentication and rate-limiting
+- Regularly rotate your API keys
+- Monitor your OpenAI usage dashboard for unusual activity
+- Consider implementing additional authentication for sensitive documentation
+- Use environment-specific configurations (development vs. production)
 
 ## Troubleshooting
 
-### OpenAI API Key Issues
+### Proxy Connection Issues
 
-If you encounter issues with the OpenAI API key:
+If you encounter issues connecting to the proxy:
 
-1. Verify that your API key is correctly set in `docusaurus.config.js`
-2. Check that your `static/docusaurus-openai-search.js` file is correctly set up
-3. Inspect the console for any error messages related to the OpenAI API
+1. Verify that your proxy URL is correct in the configuration
+2. Check that the proxy service is running and accessible
+3. Ensure your domain is whitelisted in the proxy's `ALLOWED_DOMAINS` configuration
+4. Check the proxy logs for any error messages
 
 ### Document Content Retrieval Issues
 
@@ -482,6 +486,15 @@ If the AI cannot retrieve document content:
 1. Ensure your documentation pages follow standard Docusaurus HTML structure
 2. Check that the server allows the browser to fetch documentation pages via JavaScript
 3. Try enabling the `highlightCode` option if code blocks are important to your documentation
+
+### CORS Errors
+
+If you see CORS errors:
+
+1. Verify your domain is in the proxy's `ALLOWED_DOMAINS` environment variable
+2. Check for protocol mismatch (http vs https)
+3. Ensure no trailing slashes in domain configuration
+4. Check that the proxy's CORS configuration is correct
 
 ## License
 
