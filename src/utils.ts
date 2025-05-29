@@ -917,7 +917,7 @@ export async function retrieveDocumentContent(
           
           // If we don't have any content yet, generate fallback
           if (index >= contents.length || contents[index].split('\n').filter(l => l.trim()).length <= 5) {
-            const fallbackContent = generateEnhancedFallbackForResult(result);
+            const fallbackContent = generateEnhancedFallbackForResult(topResults[index]);
             if (index < contents.length) {
               contents[index] = fallbackContent;
             } else {
