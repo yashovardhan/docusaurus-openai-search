@@ -1,5 +1,5 @@
 import { InternalDocSearchHit } from '@docsearch/react';
-import { DocumentContent, RankedSearchResult } from './types';
+import { DocumentContent, RankedSearchResult, QueryAnalysis } from './types';
 import { getLogger } from './utils/logger';
 
 /**
@@ -291,54 +291,482 @@ export function rankSearchResultsByRelevance(
 ): InternalDocSearchHit[] {
   if (!searchResults || searchResults.length === 0) return [];
 
-  const queryWords = query
-    .toLowerCase()
+  const logger = getLogger();
+  logger.log(`Ranking ${searchResults.length} search results for query: "${query}"`);
+
+  // Normalize and analyze the query
+  const normalizedQuery = query.toLowerCase().trim();
+  const queryWords = normalizedQuery
     .split(/\s+/)
-    .filter(word => word.length > 2);
+    .filter(word => word.length > 1);
+  
+  // Extract key concepts from query
+  const queryAnalysis = analyzeQuery(normalizedQuery, queryWords);
+  logger.log('Query analysis:', queryAnalysis);
 
-  const scoredResults = searchResults.map(result => {
+  const scoredResults = searchResults.map((result, index) => {
     let score = 0;
+    const scoreBreakdown: Record<string, number> = {};
 
-    // Title matching
-    if (result.hierarchy?.lvl0) {
-      const title = result.hierarchy.lvl0.toLowerCase();
-      queryWords.forEach(word => {
-        if (title.includes(word)) score += 2;
+    // 1. URL and path analysis
+    const urlScore = scoreUrl(result.url, queryAnalysis);
+    score += urlScore;
+    scoreBreakdown.url = urlScore;
+
+    // 2. Hierarchy matching with context awareness
+    const hierarchyScore = scoreHierarchy(result.hierarchy, queryAnalysis, normalizedQuery);
+    score += hierarchyScore;
+    scoreBreakdown.hierarchy = hierarchyScore;
+
+    // 3. Content matching with emphasis detection
+    const contentScore = scoreContent(result, queryAnalysis, normalizedQuery);
+    score += contentScore;
+    scoreBreakdown.content = contentScore;
+
+    // 4. Technology-specific matching
+    const techScore = scoreTechnologyMatch(result, queryAnalysis);
+    score += techScore;
+    scoreBreakdown.technology = techScore;
+
+    // 5. Document type relevance
+    const docTypeScore = scoreDocumentType(result, queryAnalysis);
+    score += docTypeScore;
+    scoreBreakdown.docType = docTypeScore;
+
+    // 6. Boost for exact or near-exact matches
+    const exactMatchBonus = scoreExactMatches(result, normalizedQuery, queryWords);
+    score += exactMatchBonus;
+    scoreBreakdown.exactMatch = exactMatchBonus;
+
+    // 7. Penalty for mismatched technologies
+    const mismatchPenalty = calculateMismatchPenalty(result, queryAnalysis);
+    score += mismatchPenalty;
+    scoreBreakdown.mismatchPenalty = mismatchPenalty;
+
+    // Log detailed scoring for top results
+    if (index < 10) {
+      logger.log(`Score for result ${index} (${result.url}):`, {
+        totalScore: score,
+        breakdown: scoreBreakdown,
+        title: result.hierarchy?.lvl1 || result.hierarchy?.lvl0
       });
-    }
-
-    // Subtitle matching
-    if (result.hierarchy?.lvl1) {
-      const subtitle = result.hierarchy.lvl1.toLowerCase();
-      queryWords.forEach(word => {
-        if (subtitle.includes(word)) score += 1.5;
-      });
-    }
-
-    // Content snippet matching
-    if (result._snippetResult?.content?.value) {
-      const snippet = result._snippetResult.content.value.toLowerCase();
-      queryWords.forEach(word => {
-        if (snippet.includes(word)) score += 1;
-      });
-
-      // Bonus for highlighted matches
-      if (result._snippetResult.content.value.includes("<em>")) {
-        score += 2;
-      }
-    }
-
-    // Prefer specific pages over index pages
-    if (result.url && !result.url.endsWith("/") && !result.url.endsWith("index.html")) {
-      score += 0.5;
     }
 
     return { result, score };
   });
 
-  return scoredResults
+  // Sort by score (descending) and return results
+  const rankedResults = scoredResults
     .sort((a, b) => b.score - a.score)
     .map(item => item.result);
+
+  logger.log(`Ranking complete. Top result score: ${scoredResults[0]?.score || 0}`);
+  return rankedResults;
+}
+
+/**
+ * Analyzes the query to extract key concepts and intent
+ */
+function analyzeQuery(query: string, queryWords: string[]): QueryAnalysis {
+  const analysis: QueryAnalysis = {
+    technologies: [],
+    actions: [],
+    documentTypes: [],
+    isHowTo: false,
+    isIntegration: false,
+    isAPI: false,
+    platform: null,
+    language: null
+  };
+
+  // Common technology keywords and their variations
+  const techPatterns = {
+    react: /\breact(?![\s-]native)\b/i,
+    reactNative: /\breact[\s-]native\b/i,
+    vue: /\bvue(?:\.?js)?\b/i,
+    angular: /\bangular(?:\.?js)?\b/i,
+    javascript: /\b(?:javascript|js)\b/i,
+    typescript: /\b(?:typescript|ts)\b/i,
+    node: /\bnode(?:\.?js)?\b/i,
+    python: /\bpython\b/i,
+    java: /\bjava\b(?!script)/i,
+    swift: /\bswift\b/i,
+    kotlin: /\bkotlin\b/i,
+    flutter: /\bflutter\b/i,
+    android: /\bandroid\b/i,
+    ios: /\bios\b/i,
+    web: /\bweb\b/i,
+    mobile: /\bmobile\b/i,
+    unity: /\bunity\b/i,
+    unreal: /\bunreal\b/i
+  };
+
+  // Check for technologies
+  Object.entries(techPatterns).forEach(([tech, pattern]) => {
+    if (pattern.test(query)) {
+      analysis.technologies.push(tech);
+      
+      // Set platform based on technology
+      if (['react', 'vue', 'angular', 'javascript', 'typescript'].includes(tech)) {
+        analysis.platform = 'web';
+      } else if (['reactNative', 'flutter', 'android', 'ios', 'swift', 'kotlin'].includes(tech)) {
+        analysis.platform = 'mobile';
+      } else if (['unity', 'unreal'].includes(tech)) {
+        analysis.platform = 'gaming';
+      }
+      
+      // Set language
+      if (['react', 'reactNative', 'vue', 'angular', 'javascript', 'typescript', 'node'].includes(tech)) {
+        analysis.language = 'javascript';
+      } else if (['swift', 'ios'].includes(tech)) {
+        analysis.language = 'swift';
+      } else if (['kotlin', 'android'].includes(tech)) {
+        analysis.language = 'kotlin';
+      } else if (tech === 'python') {
+        analysis.language = 'python';
+      } else if (tech === 'java') {
+        analysis.language = 'java';
+      }
+    }
+  });
+
+  // Action words that indicate what the user wants to do
+  const actionPatterns = {
+    integrate: /\b(?:integrate|integration|integrating|setup|install|add)\b/i,
+    implement: /\b(?:implement|implementation|implementing|create|build)\b/i,
+    use: /\b(?:use|using|usage)\b/i,
+    configure: /\b(?:configure|configuration|config|setting)\b/i,
+    authenticate: /\b(?:authenticate|authentication|auth|login|signin)\b/i,
+    connect: /\b(?:connect|connection|connecting)\b/i,
+    debug: /\b(?:debug|debugging|troubleshoot|fix|error)\b/i,
+    migrate: /\b(?:migrate|migration|upgrade|update)\b/i
+  };
+
+  Object.entries(actionPatterns).forEach(([action, pattern]) => {
+    if (pattern.test(query)) {
+      analysis.actions.push(action);
+    }
+  });
+
+  // Document type indicators
+  if (/\b(?:guide|tutorial|how[\s-]?to|example|quickstart|getting[\s-]?started)\b/i.test(query)) {
+    analysis.documentTypes.push('guide');
+    analysis.isHowTo = true;
+  }
+  if (/\b(?:api|reference|method|function|class|interface)\b/i.test(query)) {
+    analysis.documentTypes.push('api');
+    analysis.isAPI = true;
+  }
+  if (/\b(?:sdk|library|package|module)\b/i.test(query)) {
+    analysis.documentTypes.push('sdk');
+  }
+  if (/\b(?:example|demo|sample|code)\b/i.test(query)) {
+    analysis.documentTypes.push('example');
+  }
+
+  // Check for integration queries
+  if (analysis.actions.includes('integrate') || analysis.actions.includes('connect') || 
+      /\b(?:with|into|to)\b/i.test(query)) {
+    analysis.isIntegration = true;
+  }
+
+  return analysis;
+}
+
+/**
+ * Scores the URL based on query analysis
+ */
+function scoreUrl(url: string, analysis: QueryAnalysis): number {
+  if (!url) return 0;
+  
+  let score = 0;
+  const lowerUrl = url.toLowerCase();
+
+  // Technology matching in URL
+  analysis.technologies.forEach(tech => {
+    if (tech === 'react' && lowerUrl.includes('react') && !lowerUrl.includes('react-native')) {
+      score += 3; // Strong match for React (not React Native)
+    } else if (tech === 'reactNative' && lowerUrl.includes('react-native')) {
+      score += 3; // Strong match for React Native
+    } else if (lowerUrl.includes(tech.toLowerCase())) {
+      score += 2;
+    }
+  });
+
+  // Platform matching
+  if (analysis.platform) {
+    if (lowerUrl.includes(analysis.platform)) {
+      score += 2;
+    }
+  }
+
+  // Document type matching
+  if (analysis.isHowTo && lowerUrl.includes('guide')) {
+    score += 1.5;
+  }
+  if (analysis.isAPI && lowerUrl.includes('api')) {
+    score += 1.5;
+  }
+  if (analysis.documentTypes.includes('sdk') && lowerUrl.includes('sdk')) {
+    score += 2;
+  }
+
+  // Prefer specific pages over index pages
+  if (!lowerUrl.endsWith('/') && !lowerUrl.endsWith('index')) {
+    score += 0.5;
+  }
+
+  return score;
+}
+
+/**
+ * Scores the hierarchy (titles) based on query analysis
+ */
+function scoreHierarchy(
+  hierarchy: any,
+  analysis: QueryAnalysis,
+  normalizedQuery: string
+): number {
+  if (!hierarchy) return 0;
+  
+  let score = 0;
+
+  // Check each hierarchy level
+  const levels = ['lvl0', 'lvl1', 'lvl2', 'lvl3', 'lvl4', 'lvl5'];
+  const weights = [3, 2.5, 2, 1.5, 1, 0.5]; // Higher levels get more weight
+
+  levels.forEach((level, index) => {
+    if (hierarchy[level]) {
+      const text = hierarchy[level].toLowerCase();
+      
+      // Exact match bonus
+      if (text === normalizedQuery) {
+        score += weights[index] * 2;
+      }
+      
+      // Technology matching with context
+      analysis.technologies.forEach(tech => {
+        if (tech === 'react' && /\breact(?![\s-]native)\b/i.test(hierarchy[level])) {
+          score += weights[index] * 1.5;
+        } else if (tech === 'reactNative' && /\breact[\s-]native\b/i.test(hierarchy[level])) {
+          score += weights[index] * 1.5;
+        } else if (new RegExp(`\\b${tech}\\b`, 'i').test(hierarchy[level])) {
+          score += weights[index];
+        }
+      });
+
+      // Action and document type matching
+      analysis.actions.forEach(action => {
+        if (text.includes(action)) {
+          score += weights[index] * 0.5;
+        }
+      });
+
+      // SDK/API/Guide indicators
+      if (analysis.documentTypes.includes('sdk') && /\bsdk\b/i.test(hierarchy[level])) {
+        score += weights[index];
+      }
+      if (analysis.isAPI && /\bapi\b/i.test(hierarchy[level])) {
+        score += weights[index];
+      }
+      if (analysis.isHowTo && /\b(?:guide|tutorial|how[\s-]?to)\b/i.test(hierarchy[level])) {
+        score += weights[index];
+      }
+    }
+  });
+
+  return score;
+}
+
+/**
+ * Scores content and snippets
+ */
+function scoreContent(
+  result: InternalDocSearchHit,
+  analysis: QueryAnalysis,
+  normalizedQuery: string
+): number {
+  let score = 0;
+
+  // Check snippet content
+  if (result._snippetResult?.content?.value) {
+    const snippet = result._snippetResult.content.value.toLowerCase();
+    
+    // Highlighted matches (from Algolia)
+    const highlightCount = (result._snippetResult.content.value.match(/<em>/g) || []).length;
+    score += highlightCount * 1.5;
+
+    // Technology-specific content matching
+    analysis.technologies.forEach(tech => {
+      if (tech === 'react' && /\breact(?![\s-]native)\b/i.test(result._snippetResult.content.value)) {
+        score += 2;
+      } else if (tech === 'reactNative' && /\breact[\s-]native\b/i.test(result._snippetResult.content.value)) {
+        score += 2;
+      } else if (new RegExp(`\\b${tech}\\b`, 'i').test(result._snippetResult.content.value)) {
+        score += 1.5;
+      }
+    });
+
+    // Code example detection
+    if (/```|<code>|\bimport\b|\bconst\b|\bfunction\b|\bclass\b/i.test(result._snippetResult.content.value)) {
+      if (analysis.documentTypes.includes('example') || analysis.isHowTo) {
+        score += 1.5; // Boost code examples for how-to queries
+      }
+    }
+  }
+
+  // Check full content if available
+  if (result.content) {
+    const content = result.content.toLowerCase();
+    
+    // Phrase matching
+    if (content.includes(normalizedQuery)) {
+      score += 2;
+    }
+    
+    // Keyword density (but not too much to avoid keyword stuffing)
+    const keywordMatches = analysis.technologies.concat(analysis.actions)
+      .filter(keyword => content.includes(keyword.toLowerCase())).length;
+    score += Math.min(keywordMatches * 0.5, 3);
+  }
+
+  return score;
+}
+
+/**
+ * Scores technology-specific matches
+ */
+function scoreTechnologyMatch(result: InternalDocSearchHit, analysis: QueryAnalysis): number {
+  if (analysis.technologies.length === 0) return 0;
+  
+  let score = 0;
+  const resultText = JSON.stringify(result).toLowerCase();
+
+  // Special handling for React vs React Native disambiguation
+  if (analysis.technologies.includes('react') && !analysis.technologies.includes('reactNative')) {
+    // User wants React, not React Native
+    if (/\breact(?![\s-]native)\b/.test(resultText) && !/\breact[\s-]native\b/.test(resultText)) {
+      score += 3; // Bonus for React-only content
+    }
+  } else if (analysis.technologies.includes('reactNative')) {
+    // User wants React Native
+    if (/\breact[\s-]native\b/.test(resultText)) {
+      score += 3; // Bonus for React Native content
+    }
+  }
+
+  // Platform-specific boosting
+  if (analysis.platform === 'web' && /\b(?:web|browser|dom|html|css)\b/.test(resultText)) {
+    score += 1;
+  } else if (analysis.platform === 'mobile' && /\b(?:mobile|ios|android|app)\b/.test(resultText)) {
+    score += 1;
+  } else if (analysis.platform === 'gaming' && /\b(?:game|gaming|unity|unreal)\b/.test(resultText)) {
+    score += 1;
+  }
+
+  return score;
+}
+
+/**
+ * Scores based on document type relevance
+ */
+function scoreDocumentType(result: InternalDocSearchHit, analysis: QueryAnalysis): number {
+  let score = 0;
+  const resultText = JSON.stringify(result).toLowerCase();
+
+  // Match document type with user intent
+  if (analysis.isHowTo || analysis.documentTypes.includes('guide')) {
+    if (/\b(?:guide|tutorial|quickstart|getting[\s-]?started|example|how[\s-]?to)\b/.test(resultText)) {
+      score += 2;
+    }
+  }
+
+  if (analysis.isAPI || analysis.documentTypes.includes('api')) {
+    if (/\b(?:api|reference|method|function|endpoint|parameter)\b/.test(resultText)) {
+      score += 2;
+    }
+  }
+
+  if (analysis.documentTypes.includes('sdk')) {
+    if (/\b(?:sdk|library|package|installation|npm|yarn|pip|gradle|cocoapods)\b/.test(resultText)) {
+      score += 2;
+    }
+  }
+
+  if (analysis.isIntegration) {
+    if (/\b(?:integration|integrate|connect|setup|configure|implementation)\b/.test(resultText)) {
+      score += 1.5;
+    }
+  }
+
+  return score;
+}
+
+/**
+ * Scores exact and near-exact matches
+ */
+function scoreExactMatches(
+  result: InternalDocSearchHit,
+  normalizedQuery: string,
+  queryWords: string[]
+): number {
+  let score = 0;
+  
+  // Check for exact query match in title
+  if (result.hierarchy) {
+    Object.values(result.hierarchy).forEach((value: any) => {
+      if (typeof value === 'string' && value.toLowerCase() === normalizedQuery) {
+        score += 5; // High bonus for exact match
+      }
+    });
+  }
+
+  // Check for all query words in order (phrase match)
+  const resultText = JSON.stringify(result).toLowerCase();
+  const queryPhrase = queryWords.join('\\s+');
+  if (new RegExp(queryPhrase).test(resultText)) {
+    score += 3;
+  }
+
+  // Check for all query words present (any order)
+  const allWordsPresent = queryWords.every(word => resultText.includes(word));
+  if (allWordsPresent) {
+    score += 1;
+  }
+
+  return score;
+}
+
+/**
+ * Calculates penalties for mismatched content
+ */
+function calculateMismatchPenalty(result: InternalDocSearchHit, analysis: QueryAnalysis): number {
+  let penalty = 0;
+  const resultText = JSON.stringify(result).toLowerCase();
+
+  // Penalize React Native results when user wants React
+  if (analysis.technologies.includes('react') && !analysis.technologies.includes('reactNative')) {
+    if (/\breact[\s-]native\b/.test(resultText)) {
+      penalty -= 5; // Significant penalty
+    }
+  }
+
+  // Penalize wrong platform
+  if (analysis.platform === 'web' && /\b(?:mobile|ios|android|native)\b/.test(resultText) && 
+      !/\b(?:web|browser)\b/.test(resultText)) {
+    penalty -= 2;
+  } else if (analysis.platform === 'mobile' && /\b(?:web|browser|dom)\b/.test(resultText) && 
+      !/\b(?:mobile|ios|android|native)\b/.test(resultText)) {
+    penalty -= 2;
+  }
+
+  // Penalize wrong language
+  if (analysis.language === 'javascript' && /\b(?:swift|kotlin|java|python)\b/.test(resultText) &&
+      !/\b(?:javascript|js|typescript|ts)\b/.test(resultText)) {
+    penalty -= 1;
+  }
+
+  return penalty;
 }
 
 /**
@@ -378,6 +806,8 @@ export async function retrieveDocumentContent(
       if (result.hierarchy.lvl1) content += `## ${result.hierarchy.lvl1}\n`;
       if (result.hierarchy.lvl2) content += `### ${result.hierarchy.lvl2}\n`;
       if (result.hierarchy.lvl3) content += `#### ${result.hierarchy.lvl3}\n`;
+      if (result.hierarchy.lvl4) content += `##### ${result.hierarchy.lvl4}\n`;
+      if (result.hierarchy.lvl5) content += `###### ${result.hierarchy.lvl5}\n`;
       content += "\n";
     }
     
@@ -400,17 +830,33 @@ export async function retrieveDocumentContent(
       content += `${result.content}\n\n`;
     }
     
-    // Detect if we're missing content
-    if (!result._snippetResult?.content?.value && !result.content) {
-      // Try to extract additional information from highlight results
-      if (result._highlightResult) {
-        if (result._highlightResult.content?.value) {
-          const highlightContent = result._highlightResult.content.value
-            .replace(/<em>/g, "**")
-            .replace(/<\/em>/g, "**")
-            .replace(/<(?:.|\n)*?>/g, "");
+    // Extract additional content from highlight results
+    if (result._highlightResult) {
+      // Extract highlighted content
+      if (result._highlightResult.content?.value) {
+        const highlightContent = result._highlightResult.content.value
+          .replace(/<em>/g, "**")
+          .replace(/<\/em>/g, "**")
+          .replace(/<(?:.|\n)*?>/g, "");
+        
+        // Only add if it's different from snippet
+        if (!result._snippetResult?.content?.value || 
+            highlightContent !== result._snippetResult.content.value) {
           content += `${highlightContent}\n\n`;
         }
+      }
+      
+      // Extract hierarchical content that might contain useful information
+      if (result._highlightResult.hierarchy) {
+        Object.entries(result._highlightResult.hierarchy).forEach(([level, data]: [string, any]) => {
+          if (data?.value && !content.includes(data.value)) {
+            const cleanValue = data.value
+              .replace(/<em>/g, "**")
+              .replace(/<\/em>/g, "**")
+              .replace(/<(?:.|\n)*?>/g, "");
+            content += `${cleanValue}\n`;
+          }
+        });
       }
     }
     
@@ -422,48 +868,63 @@ export async function retrieveDocumentContent(
   
   logger.log(`Initial content extraction: ${contents.length} documents with content`);
   
-  // If content is still missing, try direct URL fetching
-  if (contents.length === 0 || contents.some(content => 
-      content.split('\n').filter(line => line.trim() !== '').length <= 3)) {
-    
+  // Check if we have meaningful content
+  const hasMinimalContent = contents.length === 0 || contents.some(content => {
+    const lines = content.split('\n').filter(line => line.trim() !== '').length;
+    return lines <= 5; // Just URL and title, no actual content
+  });
+  
+  if (hasMinimalContent) {
     logger.log('Content seems minimal, attempting direct URL fetching...');
     
     // Fetch content from each document URL in parallel (fallback)
     const contentPromises = topResults.map(result => fetchDocumentContent(result.url));
     const fetchedContents = await Promise.all(contentPromises);
     
-    // Process and combine fetched content with what we already have
+    // Process fetched content
     fetchedContents.forEach((fetchedContent, index) => {
       if (fetchedContent && fetchedContent.trim() !== "") {
-        if (index < contents.length) {
-          // We have some content but it might be minimal, so append fetched content
-          const existingLines = contents[index].split('\n').filter(line => line.trim() !== '').length;
-          if (existingLines <= 3) {
+        // Check if the fetched content is actually the homepage (common issue with Docusaurus)
+        const isHomepage = fetchedContent.includes("Web3Auth Documentation") && 
+                          fetchedContent.includes("Effortless Social Logins") &&
+                          fetchedContent.includes("What is Web3Auth?");
+        
+        if (!isHomepage) {
+          // We got real content, use it
+          if (index < contents.length) {
             contents[index] += `\nAdditional fetched content:\n${fetchedContent}`;
             logger.log(`Appended fetched content to document ${index} (${fetchedContent.length} chars)`);
+          } else {
+            // Create new content entry
+            let enhancedContent = "";
+            const result = topResults[index];
+            
+            if (result.hierarchy) {
+              if (result.hierarchy.lvl0) enhancedContent += `# ${result.hierarchy.lvl0}\n`;
+              if (result.hierarchy.lvl1) enhancedContent += `## ${result.hierarchy.lvl1}\n`;
+              if (result.hierarchy.lvl2) enhancedContent += `### ${result.hierarchy.lvl2}\n`;
+              enhancedContent += "\n";
+            }
+            
+            enhancedContent += `URL: ${result.url}\n\n`;
+            enhancedContent += fetchedContent;
+            
+            contents.push(enhancedContent);
+            logger.log(`Added new fetched content for document ${index} (${enhancedContent.length} chars)`);
           }
         } else {
-          // We don't have any content for this index yet
-          let enhancedContent = "";
+          logger.log(`Skipping homepage content for document ${index}`);
           
-          // Add title and hierarchy if available
-          const result = topResults[index];
-          if (result.hierarchy) {
-            if (result.hierarchy.lvl0) enhancedContent += `# ${result.hierarchy.lvl0}\n`;
-            if (result.hierarchy.lvl1) enhancedContent += `## ${result.hierarchy.lvl1}\n`;
-            if (result.hierarchy.lvl2) enhancedContent += `### ${result.hierarchy.lvl2}\n`;
-            if (result.hierarchy.lvl3) enhancedContent += `#### ${result.hierarchy.lvl3}\n`;
-            enhancedContent += "\n";
+          // If we don't have any content yet, generate fallback
+          if (index >= contents.length || contents[index].split('\n').filter(l => l.trim()).length <= 5) {
+            const fallbackContent = generateEnhancedFallbackForResult(result);
+            if (index < contents.length) {
+              contents[index] = fallbackContent;
+            } else {
+              contents.push(fallbackContent);
+            }
+            logger.log(`Generated enhanced fallback for document ${index}`);
           }
-          
-          // Add URL for reference
-          enhancedContent += `URL: ${result.url}\n\n`;
-          
-          // Add the fetched content
-          enhancedContent += fetchedContent;
-          
-          contents.push(enhancedContent);
-          logger.log(`Added new fetched content for document ${index} (${enhancedContent.length} chars)`);
         }
       }
     });
@@ -489,66 +950,116 @@ export async function retrieveDocumentContent(
     }
   }
   
-  // Verify we have actual content
-  let contentLengths = contents.map(content => {
+  // Final verification and enhancement
+  const finalContents = contents.map((content, index) => {
     const lines = content.split('\n').filter(line => line.trim() !== '').length;
-    return {length: content.length, lines: lines};
-  });
-  
-  logger.log('Content verification:', contentLengths);
-  
-  // Try direct page fetch if content still seems minimal
-  if (contentLengths.some(stats => stats.lines <= 3 || stats.length < 100)) {
-    logger.log('Some content still minimal, attempting aggressive content extraction...');
     
-    // Set up more aggressive content extraction
-    await Promise.all(topResults.map(async (result, index) => {
-      try {
-        // Only fetch for minimal content
-        if (index < contentLengths.length && 
-            (contentLengths[index].lines <= 3 || contentLengths[index].length < 100)) {
-          const directResponse = await fetch(result.url);
-          if (directResponse.ok) {
-            const htmlText = await directResponse.text();
-            const extractedContent = extractContentFromHTML(htmlText);
-            
-            if (extractedContent && extractedContent.trim() !== "") {
-              // Replace or append?
-              if (contentLengths[index].lines <= 3) {
-                // Content is very minimal, replace it completely
-                let enhancedContent = "";
-                
-                // Keep the header
-                const headerLines = contents[index].split('\n').slice(0, 4).join('\n');
-                enhancedContent = headerLines + "\n\n" + extractedContent;
-                
-                contents[index] = enhancedContent;
-                logger.log(`Replaced minimal content for document ${index} with extracted content (${extractedContent.length} chars)`);
-              } else {
-                // Content has some substance, append the extracted content
-                contents[index] += `\n\nAdditional content from direct fetch:\n${extractedContent}`;
-                logger.log(`Appended extracted content to document ${index} (${extractedContent.length} chars)`);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        logger.logError(`Failed aggressive extraction for ${result.url}`, error);
-      }
-    }));
-  }
+    // If content is still too minimal, enhance it with all available search data
+    if (lines <= 5 && index < topResults.length) {
+      logger.log(`Enhancing minimal content for document ${index}`);
+      return generateEnhancedFallbackForResult(topResults[index]);
+    }
+    
+    return content;
+  });
   
   // Process and return non-empty content
-  const processedContents = contents.map(content => {
-    // Chunk longer content to handle large documents
-    const chunks = chunkText(content, 2000);
-    return chunks[0]; // Use first chunk for simplicity
-  });
+  const processedContents = finalContents
+    .filter(content => content.trim() !== '')
+    .map(content => {
+      // Chunk longer content to handle large documents
+      const chunks = chunkText(content, 2000);
+      return chunks[0]; // Use first chunk for simplicity
+    });
   
   logger.logRAGContent(processedContents);
   logger.logPerformance('retrieveDocumentContent', startTime);
   
   return processedContents;
+}
+
+/**
+ * Generates enhanced fallback content for a single search result
+ */
+function generateEnhancedFallbackForResult(result: InternalDocSearchHit): string {
+  let content = "";
+  
+  // Build comprehensive content from all available data
+  if (result.hierarchy) {
+    if (result.hierarchy.lvl0) content += `# ${result.hierarchy.lvl0}\n`;
+    if (result.hierarchy.lvl1) content += `## ${result.hierarchy.lvl1}\n`;
+    if (result.hierarchy.lvl2) content += `### ${result.hierarchy.lvl2}\n`;
+    if (result.hierarchy.lvl3) content += `#### ${result.hierarchy.lvl3}\n`;
+    if (result.hierarchy.lvl4) content += `##### ${result.hierarchy.lvl4}\n`;
+    if (result.hierarchy.lvl5) content += `###### ${result.hierarchy.lvl5}\n`;
+    content += "\n";
+  }
+  
+  content += `URL: ${result.url}\n\n`;
+  
+  // Add type information if available
+  if (result.type) {
+    content += `Type: ${result.type}\n\n`;
+  }
+  
+  // Extract all available content
+  const contentPieces: string[] = [];
+  
+  // Snippet content (usually the most relevant)
+  if (result._snippetResult?.content?.value) {
+    const snippet = result._snippetResult.content.value
+      .replace(/<em>/g, "**")
+      .replace(/<\/em>/g, "**")
+      .replace(/<(?:.|\n)*?>/g, "");
+    contentPieces.push(snippet);
+  }
+  
+  // Full content
+  if (result.content && !contentPieces.includes(result.content)) {
+    contentPieces.push(result.content);
+  }
+  
+  // Highlight content
+  if (result._highlightResult?.content?.value) {
+    const highlight = result._highlightResult.content.value
+      .replace(/<em>/g, "**")
+      .replace(/<\/em>/g, "**")
+      .replace(/<(?:.|\n)*?>/g, "");
+    
+    if (!contentPieces.some(piece => piece.includes(highlight))) {
+      contentPieces.push(highlight);
+    }
+  }
+  
+  // Add all unique content pieces
+  if (contentPieces.length > 0) {
+    content += "Content:\n";
+    contentPieces.forEach((piece, idx) => {
+      if (idx > 0) content += "\n";
+      content += piece + "\n";
+    });
+  }
+  
+  // Add any additional metadata that might be useful
+  const metadata: string[] = [];
+  
+  // Check for any other useful fields in the result
+  Object.entries(result).forEach(([key, value]) => {
+    if (
+      !['hierarchy', 'url', 'content', '_snippetResult', '_highlightResult', 
+       'objectID', 'type', '_rankingInfo', '_distinctSeqID'].includes(key) &&
+      value && typeof value === 'string'
+    ) {
+      metadata.push(`${key}: ${value}`);
+    }
+  });
+  
+  if (metadata.length > 0) {
+    content += "\nAdditional Information:\n";
+    metadata.forEach(meta => content += `- ${meta}\n`);
+  }
+  
+  return content;
 }
 
 /**
@@ -568,70 +1079,7 @@ export function generateFallbackContent(searchResults: InternalDocSearchHit[], q
   logger.log(`Using top ${topResults.length} results for fallback content`);
 
   const fallbackContents = topResults.map((result, index) => {
-    // Create a structured representation of the search result
-    let content = "";
-
-    // Add the title and hierarchy information
-    if (result.hierarchy) {
-      if (result.hierarchy.lvl0) content += `# ${result.hierarchy.lvl0}\n`;
-      if (result.hierarchy.lvl1) content += `## ${result.hierarchy.lvl1}\n`;
-      if (result.hierarchy.lvl2) content += `### ${result.hierarchy.lvl2}\n`;
-      if (result.hierarchy.lvl3) content += `#### ${result.hierarchy.lvl3}\n`;
-      content += "\n";
-    }
-
-    // Add the URL for reference
-    content += `URL: ${result.url}\n\n`;
-
-    // Extract the most relevant information from the search result
-    
-    // 1. Extract content from highlights in snippets
-    if (result._snippetResult?.content?.value) {
-      const snippet = result._snippetResult.content.value;
-      
-      // Convert HTML to Markdown format for better readability
-      const markdownSnippet = snippet
-        .replace(/<em>/g, "**")  // Convert emphasis to bold
-        .replace(/<\/em>/g, "**")
-        .replace(/<(?:.|\n)*?>/g, ""); // Remove other HTML tags
-      
-      content += `${markdownSnippet}\n\n`;
-    }
-    
-    // 2. Add full content if available
-    if (result.content) {
-      content += `${result.content}\n\n`;
-    }
-    
-    // 3. Add any available headings that might provide additional context
-    const headings = [];
-    if (result._highlightResult?.hierarchy) {
-      // Check each heading level directly
-      const hierarchy = result._highlightResult.hierarchy;
-      
-      // Safely access each level with proper type checking
-      if (hierarchy.lvl1?.value) {
-        headings.push(cleanHighlightHTML(hierarchy.lvl1.value));
-      }
-      if (hierarchy.lvl2?.value) {
-        headings.push(cleanHighlightHTML(hierarchy.lvl2.value));
-      }
-      if (hierarchy.lvl3?.value) {
-        headings.push(cleanHighlightHTML(hierarchy.lvl3.value));
-      }
-      if (hierarchy.lvl4?.value) {
-        headings.push(cleanHighlightHTML(hierarchy.lvl4.value));
-      }
-    }
-    
-    if (headings.length > 0) {
-      content += "Related headings:\n";
-      headings.forEach(heading => {
-        content += `- ${heading}\n`;
-      });
-      content += "\n";
-    }
-
+    const content = generateEnhancedFallbackForResult(result);
     logger.log(`Generated fallback content for result ${index + 1} (${result.url}): ${content.length} chars`);
     return content;
   });

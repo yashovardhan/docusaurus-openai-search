@@ -261,6 +261,32 @@ The `prompts` object configures how prompts are generated for the AI:
 |----------|------------|-------------|
 | `onAIQuery` | `(query: string, success: boolean) => void` | Called when an AI query is made. `query` is the search string, `success` indicates whether the query was successful |
 
+### QueryAnalysis Interface
+
+The `QueryAnalysis` interface is used internally by the enhanced search ranking algorithm to analyze user queries and improve search result relevance. This interface represents the analyzed components of a search query:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `technologies` | string[] | Detected technology names in the query (e.g., `['react']`, `['vue', 'typescript']`) |
+| `actions` | string[] | Detected action words indicating user intent (e.g., `['integrate', 'setup']`, `['debug']`) |
+| `documentTypes` | string[] | Types of documentation the user might be looking for (e.g., `['guide', 'api']`, `['sdk', 'example']`) |
+| `isHowTo` | boolean | Whether the query appears to be a "how to" question |
+| `isIntegration` | boolean | Whether the query is about integrating or connecting technologies |
+| `isAPI` | boolean | Whether the query is looking for API documentation |
+| `platform` | 'web' \| 'mobile' \| 'gaming' \| null | Detected platform preference based on technologies |
+| `language` | string \| null | Detected programming language preference |
+
+#### How It Works
+
+The search ranking algorithm uses this analysis to:
+
+1. **Disambiguate similar terms**: Distinguishes between "React" and "React Native" to show more relevant results
+2. **Match user intent**: Prioritizes guides for "how to" queries, API docs for API queries, etc.
+3. **Apply platform-specific ranking**: Boosts web-related results for React queries, mobile results for React Native, etc.
+4. **Penalize mismatches**: Reduces ranking for results that don't match the detected technology or platform
+
+This intelligent query analysis significantly improves search relevance, especially for documentation sites with multiple technologies, platforms, or frameworks.
+
 ## Styling Customization
 
 The component provides customizable CSS variables to adjust spacing throughout the UI. You can override these variables in your site's CSS to adjust the spacing to match your site's design.

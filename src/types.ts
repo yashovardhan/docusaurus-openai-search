@@ -147,6 +147,20 @@ export interface DocumentContent {
 }
 
 /**
+ * Interface for query analysis results
+ */
+export interface QueryAnalysis {
+  technologies: string[];
+  actions: string[];
+  documentTypes: string[];
+  isHowTo: boolean;
+  isIntegration: boolean;
+  isAPI: boolean;
+  platform: 'web' | 'mobile' | 'gaming' | null;
+  language: string | null;
+}
+
+/**
  * Props for the AISearchModal component
  */
 export interface AISearchModalProps {
