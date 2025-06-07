@@ -1,4 +1,4 @@
-// Example configuration for enhanced AI search with detailed query analysis
+// Example configuration for Docusaurus OpenAI Search
 
 module.exports = {
   title: 'My Documentation Site',
@@ -13,6 +13,7 @@ module.exports = {
     
     // AI Search configuration
     aiSearch: {
+      // Required: OpenAI configuration
       openAI: {
         proxyUrl: 'https://your-proxy-server.com/api/chat', // Required: Your secure proxy URL
         model: 'gpt-4', // Optional: defaults to gpt-4
@@ -20,11 +21,11 @@ module.exports = {
         temperature: 0.5, // Optional: defaults to 0.5
       },
       
-      // Prompt configuration with system context
+      // Optional: Prompt customization
       prompts: {
-        siteName: 'MyProduct',
+        siteName: 'MyProduct', // Used in AI prompts for better context
         
-        // This is the key addition - provide context about your product
+        // Optional: Additional context about your product/service
         systemContext: `MyProduct is a modern data analytics platform that helps businesses 
         analyze and visualize their data. It includes features like:
         - Real-time dashboards
@@ -35,22 +36,24 @@ module.exports = {
         
         Common use cases include business intelligence, data warehousing, and analytics.`,
         
-        maxDocuments: 10, // Will search and analyze up to 10 documents
+        maxDocuments: 5, // Optional: Number of documents to analyze (default: 5)
       },
       
-      // UI customization
+      // Optional: UI customization
       ui: {
-        modalTitle: 'AI Assistant',
-        loadingText: 'Analyzing your question and searching documentation...',
-        retrievingText: 'Deep searching through documentation...',
-        generatingText: 'Synthesizing information from multiple sources...',
+        aiButtonText: 'Ask AI about "{query}"', // Optional: Button text with {query} placeholder
+        modalTitle: 'AI Assistant', // Optional: Modal header title
+        errorText: 'Unable to generate an answer. Please try again later.', // Optional: Error message
+        footerText: 'Powered by AI • Using content from documentation', // Optional: Footer text
       },
       
-      // Enable intelligent search (default: true)
-      intelligentSearch: true,
+      // Optional: Performance settings
+      maxSearchQueries: 3, // Optional: Max search queries to perform (default: 3)
+      enableCaching: true, // Optional: Enable response caching (default: true)
+      cacheTTL: 3600, // Optional: Cache time-to-live in seconds (default: 3600)
       
-      // Enable detailed logging for debugging
-      enableLogging: true,
+      // Optional: Enable detailed logging for debugging
+      enableLogging: false, // Set to true for debugging
       
       // Optional: Custom tracking function
       onAIQuery: (query, success) => {

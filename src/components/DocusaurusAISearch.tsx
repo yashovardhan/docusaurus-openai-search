@@ -304,8 +304,7 @@ export function DocusaurusAISearch({
             
             const buttonText = aiConfig?.ui?.aiButtonText?.replace('{query}', query) || 
                              DEFAULT_CONFIG.ui.aiButtonText.replace('{query}', query);
-            const buttonAriaLabel = aiConfig?.ui?.aiButtonAriaLabel || 
-                                  DEFAULT_CONFIG.ui.aiButtonAriaLabel;
+            const buttonAriaLabel = 'Ask AI about this question';
             
             aiButton.innerHTML = `
               <button class="ai-search-button-header" aria-label="${buttonAriaLabel}">

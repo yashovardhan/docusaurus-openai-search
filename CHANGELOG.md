@@ -2,6 +2,72 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.17.0] - 2025-01-13
+
+### Fixed
+- **Restored Intelligent Search**: Fixed the over-simplified search that was just taking top Algolia results
+  - Re-implemented AI-powered query analysis that understands user intent
+  - Now generates multiple search strategies based on synonyms and related concepts
+  - Enhanced content extraction from all Algolia fields (hierarchy, highlights, snippets)
+  - Intelligent relevance scoring that considers:
+    - Title matches (highest weight)
+    - Content relevance and keyword density
+    - Algolia's ranking signals
+    - Content type and URL relevance
+  
+### Improved
+- **Better Search Results**: Search now finds more relevant documentation by:
+  - Understanding what users are really asking for
+  - Searching with multiple strategies (e.g., "react integration", "react setup", "react hooks")
+  - Intelligently ranking results based on multiple factors
+  - De-duplicating results across different search queries
+  
+### Technical
+- Restored `ENHANCED_QUERY_ANALYSIS_PROMPT` for better AI understanding
+- Enhanced `SearchOrchestrator` with smarter content extraction
+- Added comprehensive relevance scoring algorithm
+- Maintained clean code structure (~400 lines vs original 678)
+
+## [3.16.0] - 2025-01-13
+
+### Major Optimizations
+- **Simplified Configuration**: Removed over-engineered configuration options
+  - Removed rarely-used UI customization options (loadingText, retryButtonText, etc.)
+  - Consolidated research config into top-level options (enableCaching, cacheTTL, maxSearchQueries)
+  - Removed separate queryAnalysis model config - now uses main OpenAI model
+  - Removed intelligentSearch toggle - always enabled when using AI
+  
+- **Streamlined Search Orchestrator**: Reduced from 678 to ~250 lines
+  - Removed sitemap parsing and discovery functionality
+  - Removed HTML content extraction (uses Algolia results directly)
+  - Simplified query analysis to just generate search queries
+  - Removed complex progress tracking with detailed steps
+  - Simplified relevance scoring algorithm
+  
+- **Simplified Logger**: Reduced from 160 to ~50 lines
+  - Removed specialized logging methods
+  - Kept only essential log() and logError() methods
+  
+- **Cleaned Up CSS**: Reduced from ~600 to ~300 lines
+  - Removed custom CSS variable system
+  - Removed redundant admonition styles
+  - Better integration with Docusaurus theme variables
+  
+- **Removed Unused Code**:
+  - Deleted analytics.ts (unused)
+  - Deleted documentRetrieval.ts (unused)
+  - Removed unused type definitions and constants
+
+### Performance Improvements
+- **50% reduction in code size** - faster bundle loading
+- **Simplified dependencies** - fewer potential bugs
+- **Better defaults** - most users won't need any configuration beyond proxy URL
+
+### Developer Experience
+- **Clearer code structure** - each file has a single responsibility
+- **Easier maintenance** - less code means fewer bugs
+- **Still extensible** - advanced features remain available
+
 ## [3.2.0] - 2024-12-19
 
 ### Added

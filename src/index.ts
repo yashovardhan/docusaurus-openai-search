@@ -14,8 +14,6 @@ export {
 export { 
   SearchOrchestrator,
   type SearchStep,
-  type SearchContext,
-  type QueryIntent,
   type DocumentContent
 } from './utils/searchOrchestrator';
 
@@ -23,8 +21,7 @@ export {
 export { 
   DEFAULT_CONFIG,
   QUERY_ANALYSIS_SYSTEM_PROMPT,
-  COMMON_DOC_PATTERNS,
-  SITEMAP_PATTERNS,
+  ENHANCED_QUERY_ANALYSIS_PROMPT,
 } from './config/defaults';
 
 // Export configuration types

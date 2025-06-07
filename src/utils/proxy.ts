@@ -22,7 +22,7 @@ export async function makeProxyRequest(
   const logger = getLogger();
   const url = `${proxyUrl}${options.endpoint}`;
   
-  logger.logAPIRequest(url, {
+  logger.log(`API Request to ${url}`, {
     method: options.method || 'POST',
     headers: options.headers,
     body: options.body
@@ -44,13 +44,13 @@ export async function makeProxyRequest(
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
       const errorMessage = error.error?.message || `Proxy request failed: ${response.statusText}`;
-      logger.logAPIResponse(null, { status: response.status, error: errorMessage });
+      logger.log('API Response Error', { status: response.status, error: errorMessage });
       throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    logger.logAPIResponse(data);
-    logger.logPerformance(`Proxy request to ${options.endpoint}`, startTime);
+    const duration = Date.now() - startTime;
+    logger.log('API Response Success', { endpoint: options.endpoint, duration: `${duration}ms` });
     
     return data;
   } catch (error) {
@@ -76,11 +76,13 @@ export async function createProxyChatCompletion(
     temperature: options.temperature || 0.5
   });
   
-  // Log the full prompt being sent
-  logger.logPrompt(
-    messages.find(m => m.role === 'system')?.content || '',
-    messages.find(m => m.role === 'user')?.content || ''
-  );
+  // Log the prompts being sent
+  const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+  const userPrompt = messages.find(m => m.role === 'user')?.content || '';
+  logger.log('Prompt details', {
+    systemPromptLength: systemPrompt.length,
+    userPromptLength: userPrompt.length
+  });
   
   return makeProxyRequest(proxyUrl, {
     endpoint: '/api/chat/completions',

@@ -3,29 +3,13 @@
   /* Use Docusaurus font family and color */
   font-family: var(--ifm-font-family-base);
   color: var(--ifm-font-color-base);
-  
-  /* Base spacing units - can be customized by users */
-  --ai-search-unit-xs: 4px;
-  --ai-search-unit-sm: 8px;
-  --ai-search-unit-md: 12px;
-  --ai-search-unit-lg: 16px;
-  --ai-search-unit-xl: 24px;
-  --ai-search-unit-xxl: 32px;
-  
-  /* Custom font sizes based on --ifm-font-size-base */
-  --ai-search-font-xs: calc(var(--ifm-font-size-base) * 0.75);
-  --ai-search-font-sm: calc(var(--ifm-font-size-base) * 0.875);
-  --ai-search-font-md: var(--ifm-font-size-base);
-  --ai-search-font-lg: calc(var(--ifm-font-size-base) * 1.25);
-  --ai-search-font-xl: calc(var(--ifm-font-size-base) * 1.5);
-  --ai-search-font-xxl: calc(var(--ifm-font-size-base) * 1.75);
 }
 
 /* AI Search Header */
 .docusaurus-openai-search .ai-search-header {
   display: flex;
   justify-content: center;
-  padding: var(--ai-search-unit-md) 0;
+  padding: 12px 0;
 }
 
 .docusaurus-openai-search .ai-search-button-header {
@@ -33,13 +17,13 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: var(--ai-search-unit-md) var(--ai-search-unit-sm);
+  padding: 12px 8px;
   border-radius: var(--ifm-button-border-radius);
   border: none;
   background: var(--docsearch-highlight-color, var(--ifm-color-primary));
   color: var(--ifm-color-white);
   font-weight: var(--ifm-font-weight-bold);
-  font-size: var(--ai-search-font-md);
+  font-size: var(--ifm-font-size-base);
   cursor: pointer;
   transition: all var(--ifm-transition-fast) ease;
 }
@@ -49,10 +33,10 @@
 }
 
 .docusaurus-openai-search .ai-search-button-header svg {
-  margin-right: var(--ai-search-unit-sm);
+  margin-right: 8px;
 }
 
-/* Z-index fixes */
+/* Z-index fixes for modal layering */
 .docusaurus-openai-search .DocSearch-Container,
 .docusaurus-openai-search .DocSearch-Modal {
   z-index: 9000 !important;
@@ -66,15 +50,6 @@
   z-index: 9001 !important;
 }
 
-.docusaurus-openai-search .DocSearch-Hit-source {
-  z-index: 100 !important;
-}
-
-.docusaurus-openai-search .DocSearch-Button {
-  z-index: 200 !important;
-  position: relative;
-}
-
 /* AI Modal Styles */
 .docusaurus-openai-search .ai-modal-overlay {
   position: fixed;
@@ -84,7 +59,7 @@
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  padding: var(--ai-search-unit-xl);
+  padding: 24px;
   backdrop-filter: blur(2px);
 }
 
@@ -98,23 +73,23 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin: var(--ai-search-unit-xl) 0;
+  margin: 24px 0;
 }
 
 .docusaurus-openai-search .ai-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  padding: 12px 16px;
   border-bottom: 1px solid var(--ifm-color-emphasis-200);
   background-color: var(--ifm-background-surface-color);
 }
 
 .docusaurus-openai-search .ai-modal-header h3 {
   margin: 0;
-  font-size: var(--ai-search-font-xl);
+  font-size: 1.5rem;
   font-weight: var(--ifm-font-weight-bold);
-  padding: var(--ai-search-unit-xs) var(--ai-search-unit-sm);
+  padding: 4px 8px;
   color: var(--ifm-color-emphasis-900);
 }
 
@@ -126,11 +101,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--ai-search-unit-xxl);
-  height: var(--ai-search-unit-xxl);
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   transition: all var(--ifm-transition-fast);
-  font-size: var(--ai-search-unit-xl);
+  font-size: 24px;
   padding: 0;
 }
 
@@ -147,20 +122,20 @@
 }
 
 .docusaurus-openai-search .ai-question {
-  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  padding: 12px 16px;
   background-color: var(--ifm-color-emphasis-100);
   border-bottom: 1px solid var(--ifm-color-emphasis-200);
   font-weight: var(--ifm-font-weight-semibold);
 }
 
 .docusaurus-openai-search .ai-answer {
-  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  padding: 12px 16px;
   overflow-y: auto;
   flex: 1;
 }
 
 .docusaurus-openai-search .ai-response {
-  margin: var(--ai-search-unit-md) 0;
+  margin: 12px 0;
 }
 
 .docusaurus-openai-search .ai-response-text {
@@ -173,21 +148,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--ai-search-unit-xxl) var(--ai-search-unit-xxl) calc(var(--ai-search-unit-xxl) * 2);
+  padding: 64px 32px;
   text-align: center;
   color: var(--ifm-color-secondary-darkest);
-  margin: var(--ai-search-unit-xxl);
 }
 
 .docusaurus-openai-search .ai-loading-spinner {
   display: inline-block;
-  width: var(--ai-search-unit-xxl);
-  height: var(--ai-search-unit-xxl);
+  width: 32px;
+  height: 32px;
   border: var(--ifm-global-border-width) solid var(--ifm-color-emphasis-200);
   border-radius: 50%;
   border-top-color: var(--ifm-color-primary);
   animation: ai-spin var(--ifm-transition-slow) ease-in-out infinite;
-  margin-bottom: var(--ai-search-unit-md);
+  margin-bottom: 12px;
 }
 
 @keyframes ai-spin {
@@ -196,61 +170,43 @@
   }
 }
 
-.docusaurus-openai-search .ai-error {
-  /* Use Docusaurus admonition classes instead of custom styling */
-  /* Empty ruleset - styling will come from Docusaurus admonition classes */
-}
-
-/* Add additional class to ensure proper spacing when used within our component */
+/* Use Docusaurus admonition classes for errors and warnings */
 .docusaurus-openai-search .admonition {
-  margin: var(--ai-search-unit-xl) 0;
-}
-
-.docusaurus-openai-search .admonition-heading {
-  display: flex;
-  align-items: center;
-}
-
-.docusaurus-openai-search .admonition-content {
-  margin-top: var(--ai-search-unit-sm);
+  margin: 24px 0;
 }
 
 .docusaurus-openai-search .ai-error-actions {
-  margin: var(--ai-search-unit-md) 0;
+  margin: 12px 0;
 }
 
-/* Custom button styling removed, using Docusaurus button classes instead */
-
 .docusaurus-openai-search .ai-search-links {
-  margin-top: var(--ai-search-unit-xl);
+  margin-top: 24px;
   text-align: left;
-  padding: 0 var(--ai-search-unit-lg);
+  padding: 0 16px;
 }
 
 .docusaurus-openai-search .ai-search-links ul {
   list-style-type: none;
-  padding-left: var(--ai-search-unit-sm);
-  margin: var(--ai-search-unit-lg) 0;
+  padding-left: 8px;
+  margin: 16px 0;
 }
 
 .docusaurus-openai-search .ai-search-links li {
-  margin-bottom: var(--ai-search-unit-lg);
-  padding: var(--ai-search-unit-xs) 0;
+  margin-bottom: 16px;
+  padding: 4px 0;
 }
-
-/* Notice styling removed, using Docusaurus admonition classes instead */
 
 /* Search footer styling */
 .docusaurus-openai-search .ai-search-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  padding: 12px 16px;
   border-top: 1px solid var(--ifm-color-emphasis-200);
 }
 
 .docusaurus-openai-search .ai-search-footer-left {
-  font-size: var(--ai-search-font-sm);
+  font-size: 0.875rem;
 }
 
 .docusaurus-openai-search .ai-search-see-all {
@@ -264,13 +220,13 @@
 }
 
 .docusaurus-openai-search .ai-modal-footer {
-  padding: var(--ai-search-unit-md) var(--ai-search-unit-lg);
+  padding: 12px 16px;
   border-top: 1px solid var(--ifm-color-emphasis-200);
   color: var(--ifm-color-secondary-darkest);
-  font-size: var(--ai-search-font-sm);
+  font-size: 0.875rem;
   text-align: center;
   background-color: var(--ifm-background-surface-color);
-  margin-top: var(--ai-search-unit-lg);
+  margin-top: 16px;
 }
 
 /* Responsive Adjustments */
@@ -287,53 +243,7 @@
   }
 }
 
-/* Let Docusaurus handle all markdown styles - removed redundant markdown styling */
-
-/* Markdown admonitions styling */
-.admonition {
-  margin-bottom: 1em;
-  padding: 15px 30px 15px 15px;
-  border-radius: 5px;
-  border-left: 8px solid;
-  position: relative;
-}
-
-.admonition-heading {
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.admonition-content p:last-child {
-  margin-bottom: 0;
-}
-
-.admonition-note, .admonition-info, .admonition.info {
-  background-color: var(--ifm-color-info-contrast-background);
-  border-left-color: var(--ifm-color-info);
-}
-
-.admonition-tip, .admonition.tip {
-  background-color: var(--ifm-color-success-contrast-background);
-  border-left-color: var(--ifm-color-success);
-}
-
-.admonition-warning, .admonition.warning {
-  background-color: var(--ifm-color-warning-contrast-background);
-  border-left-color: var(--ifm-color-warning);
-}
-
-.admonition-caution, .admonition-danger, .admonition.danger {
-  background-color: var(--ifm-color-danger-contrast-background);
-  border-left-color: var(--ifm-color-danger);
-}
-
-/* Additional support for Docusaurus-style admonitions using remark-directive */
-.contains-task-list {
-  list-style-type: none;
-  padding-left: 0;
-}
-
-/* Code block styling */
+/* Code block styling - let Docusaurus handle most of it */
 .markdown-body pre {
   background-color: var(--ifm-code-background);
   border-radius: 5px;
@@ -344,7 +254,7 @@
 }
 
 .markdown-body code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--ifm-font-family-monospace);
   font-size: 0.9em;
   padding: 0.2em 0.4em;
   border-radius: 3px;
@@ -353,173 +263,28 @@
 
 .markdown-body pre code {
   padding: 0;
-  background-color: transparent !important; /* Force transparent background for code within pre */
+  background-color: transparent;
   border-radius: 0;
   font-size: 0.9em;
   line-height: 1.5;
   white-space: pre;
-  color: inherit !important; /* Ensure text color is inherited from pre element */
+  color: inherit;
 }
 
-/* Markdown blockquote-style admonitions */
-.markdown-body blockquote {
-  margin-bottom: 1em;
-  padding: 15px 30px 15px 15px;
-  border-radius: 5px;
-  border-left: 8px solid var(--ifm-color-emphasis-300);
-  background-color: var(--ifm-color-emphasis-100);
-  color: var(--ifm-font-color-base);
-  position: relative;
-}
-
-.markdown-body blockquote p:first-child strong:first-child {
-  display: block;
-  margin-bottom: 0.5em;
-  font-weight: 700;
-  font-size: 1em;
-}
-
-/* Use data attributes for admonition types instead of :has and :contains selectors */
-.markdown-body blockquote.note {
-  background-color: var(--ifm-color-info-contrast-background);
-  border-left-color: var(--ifm-color-info);
-}
-
-.markdown-body blockquote.tip {
-  background-color: var(--ifm-color-success-contrast-background);
-  border-left-color: var(--ifm-color-success);
-}
-
-.markdown-body blockquote.warning {
-  background-color: var(--ifm-color-warning-contrast-background);
-  border-left-color: var(--ifm-color-warning);
-}
-
-.markdown-body blockquote.danger {
-  background-color: var(--ifm-color-danger-contrast-background);
-  border-left-color: var(--ifm-color-danger);
-}
-
-/* Color for admonition titles */
-.markdown-body blockquote.note strong:first-child {
-  color: var(--ifm-color-info);
-}
-
-.markdown-body blockquote.tip strong:first-child {
-  color: var(--ifm-color-success);
-}
-
-.markdown-body blockquote.warning strong:first-child {
-  color: var(--ifm-color-warning);
-}
-
-.markdown-body blockquote.danger strong:first-child {
-  color: var(--ifm-color-danger);
-}
-
-/* JavaScript will add these classes based on the first strong element */
-
-/* Removing old admonition styles */
-.admonition {
-  display: none;
-}
-
-/* Admonition styles using Docusaurus variables */
-.markdown-body blockquote {
-  margin-bottom: 1em;
-  padding: 15px 30px 15px 15px;
-  border-radius: var(--ifm-alert-border-radius);
-  border-left: 8px solid var(--ifm-color-emphasis-300);
-  background-color: var(--ifm-alert-background-color);
-  color: var(--ifm-font-color-base);
-  position: relative;
-}
-
-.markdown-body blockquote p:first-child strong:first-child {
-  display: block;
-  margin-bottom: 0.5em;
-  font-weight: var(--ifm-font-weight-bold);
-  font-size: 1em;
-}
-
-/* Note */
-.markdown-body blockquote.note {
-  background-color: var(--ifm-color-info-contrast-background);
-  border-left-color: var(--ifm-color-info);
-}
-
-.markdown-body blockquote.note strong:first-child {
-  color: var(--ifm-color-info);
-}
-
-/* Tip */
-.markdown-body blockquote.tip {
-  background-color: var(--ifm-color-success-contrast-background);
-  border-left-color: var(--ifm-color-success);
-}
-
-.markdown-body blockquote.tip strong:first-child {
-  color: var(--ifm-color-success);
-}
-
-/* Warning */
-.markdown-body blockquote.warning {
-  background-color: var(--ifm-color-warning-contrast-background);
-  border-left-color: var(--ifm-color-warning);
-}
-
-.markdown-body blockquote.warning strong:first-child {
-  color: var(--ifm-color-warning);
-}
-
-/* Danger */
-.markdown-body blockquote.danger {
-  background-color: var(--ifm-color-danger-contrast-background);
-  border-left-color: var(--ifm-color-danger);
-}
-
-.markdown-body blockquote.danger strong:first-child {
-  color: var(--ifm-color-danger);
-}
-
-/* Support for color scheme variants */
-.docusaurus-openai-search .respect-color-scheme .markdown-body {
-  color-scheme: light dark;
-}
-
-/* Support for hideable sidebar layouts */
-.docusaurus-openai-search .hideable-sidebar .markdown-body {
-  scroll-padding-top: var(--ifm-navbar-height);
-}
-
-/* AI Loading styles */
-.ai-loading {
-  text-align: center;
-  padding: 40px;
-  color: var(--ifm-color-content-secondary);
-}
-
-.ai-loading-spinner {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 16px;
-  border: 3px solid var(--ifm-color-emphasis-300);
-  border-top-color: var(--ifm-color-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
+/* AI Loading Progress */
 .ai-loading-status {
   margin-top: 16px;
+  width: 100%;
+  max-width: 400px;
 }
 
 .ai-progress-bar {
-  width: 300px;
-  height: 6px;
+  width: 100%;
+  height: 4px;
   background-color: var(--ifm-color-emphasis-200);
-  border-radius: 3px;
-  margin: 16px auto 12px;
+  border-radius: 2px;
   overflow: hidden;
+  margin: 12px 0;
 }
 
 .ai-progress-fill {
@@ -529,70 +294,9 @@
 }
 
 .ai-step-message {
-  font-size: var(--ai-search-font-md);
-  color: var(--ifm-color-emphasis-700);
-  font-weight: var(--ifm-font-weight-semibold);
-  margin-bottom: var(--ai-search-unit-md);
-}
-
-.ai-step-details {
-  margin-top: var(--ai-search-unit-lg);
-  padding: var(--ai-search-unit-lg);
-  background-color: var(--ifm-color-emphasis-100);
-  border-radius: var(--ifm-alert-border-radius);
-  border: 1px solid var(--ifm-color-emphasis-200);
-  text-align: left;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.ai-step-detail {
-  font-size: var(--ai-search-font-sm);
-  color: var(--ifm-color-emphasis-600);
-  line-height: 1.6;
-  padding: var(--ai-search-unit-xs) 0;
-  position: relative;
-  padding-left: var(--ai-search-unit-lg);
-}
-
-.ai-step-detail:before {
-  content: '•';
-  position: absolute;
-  left: 0;
-  color: var(--ifm-color-primary);
-  font-weight: bold;
-}
-
-/* Special styling for search progress items */
-.ai-step-detail:has-text('🔍'),
-.ai-step-detail:has-text('✓') {
-  padding-left: 0;
-}
-
-.ai-step-detail:has-text('🔍'):before,
-.ai-step-detail:has-text('✓'):before {
-  display: none;
-}
-
-/* Highlight key information */
-.ai-step-detail strong {
-  color: var(--ifm-color-emphasis-800);
+  font-size: 1rem;
+  margin-bottom: 8px;
   font-weight: var(--ifm-font-weight-semibold);
 }
 
-/* Add some animation for progress updates */
-.ai-step-details {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-} 
+/* Remove all the redundant custom admonition styles and custom CSS variables */ 

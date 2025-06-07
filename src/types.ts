@@ -6,20 +6,12 @@ import { InternalDocSearchHit } from '@docsearch/react';
 export interface PromptOptions {
   /** Custom system prompt template to replace the default one */
   systemPrompt?: string;
-  /** Custom user prompt template to replace the default one */
-  userPrompt?: string;
   /** Name of your site or product to use in default prompts */
   siteName?: string;
   /** Additional context about your product/service to help AI understand queries better */
   systemContext?: string;
   /** Max number of documents to include in context */
   maxDocuments?: number;
-  /** Whether to include code blocks separately in the prompt */
-  highlightCode?: boolean;
-  /** Whether to include llms.txt file if available */
-  includeLlmsFile?: boolean;
-  /** Custom response guidelines to use in the system prompt */
-  responseGuidelines?: string;
 }
 
 /**
@@ -29,11 +21,11 @@ export interface OpenAIOptions {
   /** Proxy URL - backend proxy service URL for secure API calls */
   proxyUrl: string;
   /** Model to use for AI search queries, defaults to gpt-4 */
-  model: string;
+  model?: string;
   /** Maximum tokens to use in AI requests */
-  maxTokens: number;
+  maxTokens?: number;
   /** Temperature for AI responses (0-1), lower is more deterministic */
-  temperature: number;
+  temperature?: number;
 }
 
 /**
@@ -42,40 +34,12 @@ export interface OpenAIOptions {
 export interface UIOptions {
   /** Custom text for the AI button */
   aiButtonText?: string;
-  /** ARIA label for the AI button */
-  aiButtonAriaLabel?: string;
   /** Title of the AI modal */
   modalTitle?: string;
-  /** Loading text in the AI modal */
-  loadingText?: string;
   /** Error text when AI generation fails */
   errorText?: string;
-  /** Text for retry button */
-  retryButtonText?: string;
   /** Footer text in the AI modal */
   footerText?: string;
-  /** Text shown when retrieving document content */
-  retrievingText?: string;
-  /** Text shown when generating AI response */
-  generatingText?: string;
-}
-
-/**
- * Research configuration for deep documentation analysis
- */
-export interface ResearchConfig {
-  /** Maximum number of AI calls per search */
-  maxAICalls?: number;
-  /** Maximum number of search queries to perform */
-  maxSearchQueries?: number;
-  /** Maximum documents to retrieve */
-  maxDocuments?: number;
-  /** Timeout in seconds for the entire search process */
-  timeoutSeconds?: number;
-  /** Enable response caching */
-  enableCaching?: boolean;
-  /** Cache TTL in seconds */
-  cacheTTL?: number;
 }
 
 /**
@@ -103,11 +67,14 @@ export interface DocusaurusAISearchConfig {
   /** Enable or disable AI search features */
   enabled?: boolean;
   
-  /** Enable intelligent multi-step search (Perplexity-style) */
-  intelligentSearch?: boolean;
+  /** Maximum number of search queries to perform (default: 3) */
+  maxSearchQueries?: number;
   
-  /** Research configuration for deep analysis */
-  research?: ResearchConfig;
+  /** Enable response caching (default: true) */
+  enableCaching?: boolean;
+  
+  /** Cache TTL in seconds (default: 3600) */
+  cacheTTL?: number;
   
   /** Callback function when an AI query is made */
   onAIQuery?: (query: string, success: boolean) => void;

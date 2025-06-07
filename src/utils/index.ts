@@ -2,15 +2,6 @@
  * Central exports for all utility modules
  */
 
-// Analytics utilities
-export { trackAIQuery } from './analytics';
-
-// Document retrieval utilities
-export { 
-  fetchDocumentContent, 
-  retrieveDocumentContent 
-} from './documentRetrieval';
-
 // Prompt utilities
 export { 
   DEFAULT_RESPONSE_GUIDELINES,

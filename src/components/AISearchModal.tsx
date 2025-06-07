@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { AISearchModalProps } from '../types';
 import {
-  trackAIQuery,
-  retrieveDocumentContent,
   createSystemPrompt,
   createUserPrompt,
   createProxyChatCompletion,
@@ -138,12 +136,12 @@ export function AISearchModal({
   // Default modal text overrides
   const modalTexts = {
     modalTitle: config?.ui?.modalTitle || DEFAULT_CONFIG.ui.modalTitle,
-    loadingText: config?.ui?.loadingText || DEFAULT_CONFIG.ui.loadingText,
+    loadingText: 'Generating answer based on documentation...',
     errorText: config?.ui?.errorText || DEFAULT_CONFIG.ui.errorText,
-    retryButtonText: config?.ui?.retryButtonText || DEFAULT_CONFIG.ui.retryButtonText,
+    retryButtonText: 'Retry Query',
     footerText: config?.ui?.footerText || DEFAULT_CONFIG.ui.footerText,
-    retrievingText: config?.ui?.retrievingText || DEFAULT_CONFIG.ui.retrievingText,
-    generatingText: config?.ui?.generatingText || DEFAULT_CONFIG.ui.generatingText,
+    retrievingText: 'Retrieving document content...',
+    generatingText: 'Generating AI response...',
   };
 
   // Function to handle retrying the query
@@ -166,9 +164,9 @@ export function AISearchModal({
 
   // Initialize search orchestrator
   useEffect(() => {
-    if (proxyUrl && config?.intelligentSearch !== false) {
+    if (proxyUrl && config) {
       orchestratorRef.current = new SearchOrchestrator(
-        config!,  // Pass the entire config object
+        config,
         (step) => setSearchStep(step)
       );
     }
@@ -196,8 +194,8 @@ export function AISearchModal({
         setFetchFailed(false);
 
         // Check cache first if enabled
-        const enableCaching = config?.research?.enableCaching ?? DEFAULT_CONFIG.research.enableCaching;
-        const cacheTTL = config?.research?.cacheTTL || DEFAULT_CONFIG.research.cacheTTL;
+        const enableCaching = config?.enableCaching ?? DEFAULT_CONFIG.enableCaching;
+        const cacheTTL = config?.cacheTTL || DEFAULT_CONFIG.cacheTTL;
         
         if (enableCaching) {
           const cached = cache.getCached(query, cacheTTL);
@@ -213,8 +211,6 @@ export function AISearchModal({
               // Track cached response
               if (config?.onAIQuery) {
                 config.onAIQuery(query, true);
-              } else {
-                trackAIQuery(query, true);
               }
               return;
             }
@@ -222,7 +218,7 @@ export function AISearchModal({
         }
 
         // Use intelligent search if enabled
-        if (config?.intelligentSearch !== false && orchestratorRef.current && algoliaConfig) {
+        if (orchestratorRef.current && algoliaConfig) {
           const documents = await orchestratorRef.current.performIntelligentSearch(
             query,
             algoliaConfig.searchClient,
@@ -262,16 +258,38 @@ export function AISearchModal({
             progress: 50
           });
 
-          const contents = await retrieveDocumentContent(searchResults, 
-            config?.prompts?.maxDocuments || 5
-          );
+          // Simple content extraction from search results
+          const maxDocs = config?.prompts?.maxDocuments || 5;
+          const documents: DocumentContent[] = searchResults.slice(0, maxDocs).map((result) => {
+            let content = '';
+            
+            // Build content from hierarchy
+            if (result.hierarchy) {
+              const levels = ['lvl0', 'lvl1', 'lvl2', 'lvl3', 'lvl4', 'lvl5'] as const;
+              levels.forEach(level => {
+                const value = result.hierarchy[level];
+                if (value) {
+                  content += `${value}\n`;
+                }
+              });
+            }
+            
+            // Add snippet
+            if (result._snippetResult?.content?.value) {
+              content += `\n${result._snippetResult.content.value}`;
+            }
+            
+            // Add full content if available
+            if (result.content) {
+              content += `\n${result.content}`;
+            }
 
-          // Convert to DocumentContent format
-          const documents: DocumentContent[] = contents.map((content, index) => ({
-            url: searchResults[index]?.url || '',
-            title: searchResults[index]?.hierarchy?.lvl1 || searchResults[index]?.hierarchy?.lvl0 || 'Document',
-            content: content
-          }));
+            return {
+              url: result.url || '',
+              title: result.hierarchy?.lvl1 || result.hierarchy?.lvl0 || 'Document',
+              content: content || 'No content available'
+            };
+          });
 
           setRetrievedContent(documents);
         }
@@ -376,7 +394,7 @@ export function AISearchModal({
         setAnswer(finalAnswer);
         
         // Cache the complete response if caching is enabled
-        const enableCaching = config?.research?.enableCaching ?? DEFAULT_CONFIG.research.enableCaching;
+        const enableCaching = config?.enableCaching ?? DEFAULT_CONFIG.enableCaching;
         if (enableCaching) {
           cache.set(query, finalAnswer, queryAnalysis, retrievedContent);
         }
@@ -384,8 +402,6 @@ export function AISearchModal({
         // Track successful AI query if function is provided
         if (config?.onAIQuery) {
           config.onAIQuery(query, true);
-        } else {
-          trackAIQuery(query, true);
         }
       } catch (err: any) {
         setError(err?.message || 'Failed to generate an answer. Please try again later.');
@@ -393,8 +409,6 @@ export function AISearchModal({
         // Track failed AI query if function is provided
         if (config?.onAIQuery) {
           config.onAIQuery(query, false);
-        } else {
-          trackAIQuery(query, false);
         }
       } finally {
         setLoading(false);
@@ -412,7 +426,7 @@ export function AISearchModal({
       let markdownContent = answer;
 
       // Add source references if using intelligent search
-      if (config?.intelligentSearch !== false && retrievedContent.length > 0) {
+      if (orchestratorRef.current && retrievedContent.length > 0) {
         const sourcesMarkdown = `
 
 ---
@@ -504,18 +518,9 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
                       />
                     </div>
                     <div className="ai-step-message">{searchStep.message}</div>
-                    {searchStep.details && searchStep.details.length > 0 && (
-                      <div className="ai-step-details">
-                        {searchStep.details.map((detail, idx) => (
-                          <div key={idx} className="ai-step-detail">
-                            {detail}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </>
                 ) : (
-                  <div>{modalTexts.loadingText}</div>
+                  <p>{modalTexts.loadingText}</p>
                 )}
               </div>
             </div>
@@ -630,9 +635,9 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
             </span>
           ) : (
             <span>
-              {config?.intelligentSearch !== false 
-                ? `${modalTexts.footerText} • Deep research: ${retrievedContent.length} documents analyzed • ${aiCallCount} AI calls`
-                : `${modalTexts.footerText} • ${retrievedContent.length} documents • ${aiCallCount} AI calls`
+              {orchestratorRef.current 
+                ? `${modalTexts.footerText} • ${retrievedContent.length} documents analyzed`
+                : `${modalTexts.footerText} • Found ${retrievedContent.length} documents`
               }
               {fetchFailed ? ' (search results only)' : ''}
             </span>
