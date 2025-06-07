@@ -10,6 +10,8 @@ export interface PromptOptions {
   userPrompt?: string;
   /** Name of your site or product to use in default prompts */
   siteName?: string;
+  /** Additional context about your product/service to help AI understand queries better */
+  systemContext?: string;
   /** Max number of documents to include in context */
   maxDocuments?: number;
   /** Whether to include code blocks separately in the prompt */
@@ -18,8 +20,6 @@ export interface PromptOptions {
   includeLlmsFile?: boolean;
   /** Custom response guidelines to use in the system prompt */
   responseGuidelines?: string;
-  /** Whether to use AI-based summarization before sending to main LLM */
-  useSummarization?: boolean;
 }
 
 /**
@@ -61,20 +61,58 @@ export interface UIOptions {
 }
 
 /**
- * Configuration for AI search functionality
+ * Research configuration for deep documentation analysis
+ */
+export interface ResearchConfig {
+  /** Maximum number of AI calls per search */
+  maxAICalls?: number;
+  /** Maximum number of search queries to perform */
+  maxSearchQueries?: number;
+  /** Maximum documents to retrieve */
+  maxDocuments?: number;
+  /** Timeout in seconds for the entire search process */
+  timeoutSeconds?: number;
+  /** Enable response caching */
+  enableCaching?: boolean;
+  /** Cache TTL in seconds */
+  cacheTTL?: number;
+}
+
+/**
+ * Docusaurus AI Search configuration
  */
 export interface DocusaurusAISearchConfig {
   /** OpenAI API settings */
-  openAI: OpenAIOptions;
-  /** UI text and appearance customization */
+  openAI: {
+    /** URL of your backend proxy service */
+    proxyUrl: string;
+    /** Model to use for AI search queries */
+    model?: string;
+    /** Maximum tokens to use in AI requests */
+    maxTokens?: number;
+    /** Temperature for AI responses (0-1) */
+    temperature?: number;
+  };
+  
+  /** UI customization options */
   ui?: UIOptions;
-  /** Prompt generation and content handling options */
+  
+  /** Prompt customization options */
   prompts?: PromptOptions;
-  /** Whether to enable AI search features */
+  
+  /** Enable or disable AI search features */
   enabled?: boolean;
-  /** Function to call when an AI query is made, for analytics */
+  
+  /** Enable intelligent multi-step search (Perplexity-style) */
+  intelligentSearch?: boolean;
+  
+  /** Research configuration for deep analysis */
+  research?: ResearchConfig;
+  
+  /** Callback function when an AI query is made */
   onAIQuery?: (query: string, success: boolean) => void;
-  /** Enable detailed logging for debugging (logs content fetching, prompts, responses, etc.) */
+  
+  /** Enable detailed logging for debugging */
   enableLogging?: boolean;
 }
 
@@ -130,45 +168,29 @@ export interface DocusaurusAISearchProps {
 }
 
 /**
- * Search result with relevance score
- */
-export interface RankedSearchResult {
-  result: InternalDocSearchHit;
-  score: number;
-}
-
-/**
- * Document content from search results
- */
-export interface DocumentContent {
-  url: string;
-  title: string;
-  content: string;
-}
-
-/**
- * Interface for query analysis results
- */
-export interface QueryAnalysis {
-  technologies: string[];
-  actions: string[];
-  documentTypes: string[];
-  isHowTo: boolean;
-  isIntegration: boolean;
-  isAPI: boolean;
-  platform: 'web' | 'mobile' | 'gaming' | null;
-  language: string | null;
-}
-
-/**
- * Props for the AISearchModal component
+ * Props for the AI Search Modal component
  */
 export interface AISearchModalProps {
+  /** The search query */
   query: string;
+  
+  /** Function to close the modal */
   onClose: () => void;
+  
+  /** Search results from Algolia */
   searchResults: InternalDocSearchHit[];
+  
+  /** AI configuration */
   config?: DocusaurusAISearchConfig;
-  themeConfig: DocusaurusThemeConfig;
+  
+  /** Theme configuration for code highlighting */
+  themeConfig?: any;
+  
+  /** Algolia configuration for intelligent search */
+  algoliaConfig?: {
+    searchClient: any;
+    indexName: string;
+  };
 }
 
 /**

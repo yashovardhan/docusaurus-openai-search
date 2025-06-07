@@ -92,43 +92,4 @@ export async function createProxyChatCompletion(
       temperature: options.temperature || 0.5
     }
   });
-}
-
-/**
- * Summarize content through the proxy
- */
-export async function createProxySummarization(
-  proxyUrl: string,
-  query: string,
-  content: string[],
-  options?: {
-    model?: string;
-    maxTokens?: number;
-    systemPrompt?: string;
-  }
-): Promise<string> {
-  const logger = getLogger();
-  
-  logger.log('Creating content summarization through proxy', {
-    query,
-    contentCount: content.length,
-    totalContentLength: content.reduce((sum, c) => sum + c.length, 0),
-    model: options?.model || 'gpt-4'
-  });
-  
-  const response = await makeProxyRequest(proxyUrl, {
-    endpoint: '/api/summarize',
-    method: 'POST',
-    body: {
-      query,
-      content,
-      model: options?.model,
-      maxTokens: options?.maxTokens,
-      systemPrompt: options?.systemPrompt
-    }
-  });
-
-  logger.logSummarization(content, response.summary);
-  
-  return response.summary;
 } 

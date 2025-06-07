@@ -211,6 +211,7 @@ The `aiConfig` prop configures the AI-powered search features:
 | `ui` | object | No | UI customization options |
 | `prompts` | object | No | Prompt generation and content handling options |
 | `enabled` | boolean | No | Enable or disable AI search features (default: `true`) |
+| `intelligentSearch` | boolean | No | Enable Perplexity-style intelligent search (default: `true`) |
 | `onAIQuery` | function | No | Callback function when an AI query is made |
 | `enableLogging` | boolean | No | Enable detailed logging for debugging RAG pipeline (default: `false`) |
 
@@ -250,10 +251,81 @@ The `prompts` object configures how prompts are generated for the AI:
 | `systemPrompt` | string | No | Custom system prompt template to replace the default one |
 | `userPrompt` | string | No | Custom user prompt template to replace the default one |
 | `siteName` | string | No | Name of your site or product to use in default prompts (default: `Documentation`) |
+| `systemContext` | string | No | Additional context about your product/service to help AI understand queries better |
 | `maxDocuments` | number | No | Maximum number of documents to include in context (default: `4`) |
 | `highlightCode` | boolean | No | Whether to include code blocks separately in the prompt |
 | `includeLlmsFile` | boolean | No | Whether to include `llms.txt` from the site root if available. This file provides additional context for AI responses. Enabled by default, set to `false` to disable. |
 | `useSummarization` | boolean | No | Whether to use AI-based summarization before sending content to the main LLM. This shrinks and focuses the content to be more relevant to the query. (default: `false`) |
+
+### Enhanced Query Analysis (Deep Research Mode)
+
+When `intelligentSearch` is enabled (default), the search performs a sophisticated two-step AI analysis:
+
+#### How It Works
+
+1. **Query Understanding**: The AI first analyzes your query using the system context to understand:
+   - What the user is really asking about
+   - Key concepts and terminology related to the query
+   - Up to 5 specific search keywords that will find relevant documentation
+
+2. **Multi-faceted Search**: For each keyword identified:
+   - Performs a targeted search
+   - Retrieves the top 2 most relevant documents
+   - Collects up to 10 total documents for comprehensive coverage
+
+3. **Synthesis**: The collected documents are sent to the AI for final answer generation
+
+#### Benefits
+
+- **Better Understanding**: AI uses your product context to decode ambiguous queries
+- **Comprehensive Coverage**: Multiple targeted searches find more relevant content
+- **Transparent Process**: Users see exactly what the AI is doing at each step
+
+#### Example Configuration with System Context
+
+```jsx
+const aiConfig = {
+  openAI: {
+    proxyUrl: "https://your-backend-url.com",
+    model: "gpt-4",
+  },
+  prompts: {
+    siteName: "MyProduct",
+    // Provide context about your product to help AI understand queries
+    systemContext: `MyProduct is a modern data analytics platform that helps businesses 
+    analyze and visualize their data. Key features include:
+    - Real-time dashboards
+    - SQL query builder
+    - Data pipeline management
+    - API integrations
+    - Custom reporting
+    
+    Common use cases: business intelligence, data warehousing, and analytics.`,
+    maxDocuments: 10, // Collect up to 10 documents
+  },
+  intelligentSearch: true, // Enable deep research mode (default)
+};
+```
+
+#### What Users See
+
+During the search process, users see detailed progress:
+
+1. **Analysis Phase**:
+   - "Analyzing your question to understand what you're looking for..."
+   - Shows what the AI understood from the query
+   - Displays the search keywords identified
+
+2. **Search Phase**:
+   - Progress for each keyword search
+   - Number of results found for each keyword
+   - Total documents collected
+
+3. **Synthesis Phase**:
+   - "Preparing final results for AI synthesis..."
+   - Number of documents being analyzed
+
+This transparency helps users understand how their query is being processed and builds trust in the results.
 
 ### Event Callbacks
 
@@ -649,3 +721,168 @@ MIT
 ## Credits
 
 Built on top of Docusaurus and Algolia DocSearch.
+
+## What's New: Intelligent Search
+
+The latest version introduces Perplexity-style intelligent search that:
+- **Understands Intent**: Analyzes your query to understand what you're really looking for
+- **Multi-Step Search**: Performs multiple targeted searches based on query analysis
+- **Sitemap Integration**: Uses your site's structure to discover related content
+- **Progress Updates**: Shows real-time progress as it searches and analyzes
+- **Smart Ranking**: Ranks results by relevance to your specific question
+
+## Intelligent Search Mode
+
+When `intelligentSearch` is enabled (default), the search process works as follows:
+
+1. **Query Analysis**: AI analyzes your query to understand the intent (how-to, troubleshooting, API reference, etc.)
+2. **Multi-faceted Search**: Generates multiple search queries based on the analysis
+3. **Sitemap Discovery**: Uses your site's sitemap to find related documentation
+4. **Content Ranking**: Scores and ranks documents by relevance
+5. **Answer Generation**: Creates a comprehensive answer from the most relevant sources
+
+### Progress Indicators
+
+During intelligent search, users see real-time progress updates:
+- "Understanding your question..." - Analyzing query intent
+- "Loading documentation structure..." - Processing sitemap
+- "Searching documentation..." - Running searches
+- "Finding related documentation..." - Discovering additional content
+- "Retrieving documentation content..." - Fetching page content
+- "Generating AI response..." - Creating the final answer
+
+### Configuration Example
+
+```jsx
+const aiConfig = {
+  openAI: {
+    proxyUrl: "https://your-backend-url.com",
+    model: "gpt-4",
+    maxTokens: 10000,
+    temperature: 0.3,
+  },
+  // Enable intelligent search (default: true)
+  intelligentSearch: true,
+  prompts: {
+    siteName: "Your Documentation",
+    maxDocuments: 10, // Analyze up to 10 documents
+  },
+  ui: {
+    aiButtonText: "Ask AI",
+    modalTitle: "AI Assistant",
+  },
+};
+```
+
+### Disabling Intelligent Search
+
+If you prefer the simpler, faster search that relies solely on Algolia results:
+
+```jsx
+const aiConfig = {
+  // ... other config
+  intelligentSearch: false, // Use simple Algolia-based search
+};
+```
+
+## Configuration
+
+The plugin uses a comprehensive default configuration system. All configuration values have sensible defaults, so you only need to specify what you want to override.
+
+### Default Configuration
+
+The plugin includes built-in defaults for all configuration options. You can import and reference these defaults if needed:
+
+```jsx
+import { DEFAULT_CONFIG } from 'docusaurus-openai-search';
+
+// View default values
+console.log(DEFAULT_CONFIG);
+```
+
+Default values include:
+- **OpenAI Model**: `gpt-4` for main queries, `gpt-3.5-turbo` for query analysis
+- **Temperature**: `0.5` for main queries, `0.3` for query analysis
+- **Max Tokens**: `2000` for main queries, `500` for query analysis
+- **Intelligent Search**: Enabled by default
+- **Max Documents**: 10 for intelligent search, 5 for simple search
+
+### Minimal Configuration
+
+The only required configuration is the proxy URL:
+
+```jsx
+const aiConfig = {
+  openAI: {
+    proxyUrl: "https://your-backend-url.com", // Only required field
+  },
+};
+```
+
+All other values will use sensible defaults.
+
+### Full Configuration Example
+
+Here's a complete example showing all available options:
+
+```jsx
+const aiConfig = {
+  // OpenAI API settings
+  openAI: {
+    proxyUrl: "https://your-backend-url.com", // Required
+    model: "gpt-4",                          // Default: gpt-4
+    maxTokens: 10000,                        // Default: 2000
+    temperature: 0.3,                        // Default: 0.5
+  },
+  
+  // Enable/disable features
+  intelligentSearch: true,                   // Default: true
+  enabled: true,                            // Default: true
+  enableLogging: false,                     // Default: false
+  
+  // UI customization
+  ui: {
+    aiButtonText: "Ask AI about \"{query}\"",         // Default includes {query} placeholder
+    aiButtonAriaLabel: "Ask AI about this question",  // Default
+    modalTitle: "AI Answer",                          // Default
+    loadingText: "Generating answer based on documentation...", // Default
+    errorText: "Unable to generate an answer. Please try again later.", // Default
+    retryButtonText: "Retry Query",                   // Default
+    footerText: "Powered by AI • Using content from documentation", // Default
+    retrievingText: "Retrieving document content...", // Default
+    generatingText: "Generating AI response...",      // Default
+  },
+  
+  // Prompt customization
+  prompts: {
+    siteName: "Your Documentation",          // Default: "this documentation"
+    maxDocuments: 10,                        // Default: 10 for intelligent search, 5 for simple
+    highlightCode: false,                    // Default: false
+    includeLlmsFile: true,                   // Default: true
+    useSummarization: false,                 // Default: false
+    systemPrompt: undefined,                 // Default: built-in prompt
+    userPrompt: undefined,                   // Default: built-in prompt
+  },
+  
+  // Event callbacks
+  onAIQuery: (query, success) => {
+    console.log(`AI query: ${query}, success: ${success}`);
+  },
+};
+```
+
+### Accessing Configuration Constants
+
+The plugin exports several configuration constants that you can use:
+
+```jsx
+import { 
+  DEFAULT_CONFIG,
+  QUERY_ANALYSIS_SYSTEM_PROMPT,
+  COMMON_DOC_PATTERNS,
+  SITEMAP_PATTERNS 
+} from 'docusaurus-openai-search';
+
+// Use or extend default patterns
+const myDocPatterns = [...COMMON_DOC_PATTERNS, '/my-custom-docs'];
+```

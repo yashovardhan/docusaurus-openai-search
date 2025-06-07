@@ -3,18 +3,22 @@ import { AISearchModalProps } from '../types';
 import {
   trackAIQuery,
   retrieveDocumentContent,
-  generateFallbackContent,
   createSystemPrompt,
-  createUserPrompt
+  createUserPrompt,
+  createProxyChatCompletion,
+  createLogger,
+  SearchOrchestrator,
+  ResponseCache,
+  type SearchStep,
+  type DocumentContent
 } from '../utils';
-import { createProxyChatCompletion, createProxySummarization } from '../utils/proxy';
-import { createLogger } from '../utils/logger';
 import '../styles.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Highlight, themes as prismThemes, type PrismTheme } from 'prism-react-renderer';
+import { Highlight, themes as prismThemes, PrismTheme } from 'prism-react-renderer';
 import type { Components } from 'react-markdown';
+import { DEFAULT_CONFIG } from '../config/defaults';
 
 // Type definitions for code component props
 interface CodeProps {
@@ -70,21 +74,33 @@ export function AISearchModal({
   onClose,
   searchResults,
   config,
-  themeConfig
+  themeConfig,
+  algoliaConfig
 }: AISearchModalProps): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
   const [formattedAnswer, setFormattedAnswer] = useState<string>('');
-  const [retrievedContent, setRetrievedContent] = useState<string[]>([]);
-  const [retrievalStatus, setRetrievalStatus] = useState<string>(
-    config?.ui?.retrievingText || 'Retrieving document content...'
-  );
+  const [retrievedContent, setRetrievedContent] = useState<DocumentContent[]>([]);
+  const [searchStep, setSearchStep] = useState<SearchStep | null>(null);
   const [fetchFailed, setFetchFailed] = useState<boolean>(false);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
+  const [queryAnalysis, setQueryAnalysis] = useState<string>('');
+  const [aiCallCount, setAiCallCount] = useState<number>(0);
+  const [isFromCache, setIsFromCache] = useState<boolean>(false);
+  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
   
   // Reference to the markdown container
   const markdownRef = useRef<HTMLDivElement>(null);
+  
+  // Reference to search orchestrator
+  const orchestratorRef = useRef<SearchOrchestrator | null>(null);
+  
+  // Ref to track if answer generation has started to prevent duplicates
+  const answerGenerationStartedRef = useRef<boolean>(false);
+  
+  // Cache instance
+  const cache = ResponseCache.getInstance();
 
   // Initialize logger with enableLogging config
   useEffect(() => {
@@ -121,14 +137,13 @@ export function AISearchModal({
 
   // Default modal text overrides
   const modalTexts = {
-    modalTitle: 'AI Answer',
-    loadingText: 'Generating answer based on documentation...',
-    errorText: 'Unable to generate an answer. Please try again later.',
-    retryButtonText: 'Retry Query',
-    footerText: 'Powered by AI • Using content from documentation',
-    retrievingText: 'Retrieving document content...',
-    generatingText: 'Generating AI response...',
-    ...config?.ui
+    modalTitle: config?.ui?.modalTitle || DEFAULT_CONFIG.ui.modalTitle,
+    loadingText: config?.ui?.loadingText || DEFAULT_CONFIG.ui.loadingText,
+    errorText: config?.ui?.errorText || DEFAULT_CONFIG.ui.errorText,
+    retryButtonText: config?.ui?.retryButtonText || DEFAULT_CONFIG.ui.retryButtonText,
+    footerText: config?.ui?.footerText || DEFAULT_CONFIG.ui.footerText,
+    retrievingText: config?.ui?.retrievingText || DEFAULT_CONFIG.ui.retrievingText,
+    generatingText: config?.ui?.generatingText || DEFAULT_CONFIG.ui.generatingText,
   };
 
   // Function to handle retrying the query
@@ -136,7 +151,11 @@ export function AISearchModal({
     setIsRetrying(true);
     setError(null);
     setLoading(true);
-    setRetrievalStatus('Retrying...');
+    setSearchStep(null);
+    setRetrievedContent([]);
+    setAnswer(null);
+    setIsGeneratingAnswer(false);
+    answerGenerationStartedRef.current = false;
 
     // Set a small delay to ensure UI updates before retrying
     setTimeout(() => {
@@ -145,7 +164,17 @@ export function AISearchModal({
     }, 100);
   }, []);
 
-  // First, retrieve document content
+  // Initialize search orchestrator
+  useEffect(() => {
+    if (proxyUrl && config?.intelligentSearch !== false) {
+      orchestratorRef.current = new SearchOrchestrator(
+        config!,  // Pass the entire config object
+        (step) => setSearchStep(step)
+      );
+    }
+  }, [proxyUrl, config]);
+
+  // First, retrieve document content using intelligent search
   useEffect(() => {
     async function fetchContent() {
       if (!query) {
@@ -153,49 +182,115 @@ export function AISearchModal({
         return;
       }
 
+      // Skip if we're retrying
+      if (isRetrying) {
+        return;
+      }
+
+      // Skip if we already have content and an answer
+      if (retrievedContent.length > 0 && answer) {
+        return;
+      }
+
       try {
-        setRetrievalStatus(modalTexts.retrievingText);
         setFetchFailed(false);
 
-        if (searchResults.length === 0) {
-          throw new Error('No search results available to retrieve content from');
+        // Check cache first if enabled
+        const enableCaching = config?.research?.enableCaching ?? DEFAULT_CONFIG.research.enableCaching;
+        const cacheTTL = config?.research?.cacheTTL || DEFAULT_CONFIG.research.cacheTTL;
+        
+        if (enableCaching) {
+          const cached = cache.getCached(query, cacheTTL);
+          if (cached) {
+            if (cached.response) {
+              // Full cache hit - we have everything
+              setAnswer(cached.response);
+              setRetrievedContent(cached.documents || []);
+              setQueryAnalysis(cached.queryAnalysis || '');
+              setIsFromCache(true);
+              setLoading(false);
+              
+              // Track cached response
+              if (config?.onAIQuery) {
+                config.onAIQuery(query, true);
+              } else {
+                trackAIQuery(query, true);
+              }
+              return;
+            }
+          }
         }
 
-        const contents = await retrieveDocumentContent(searchResults, query, {
-          includeLlmsFile: config?.prompts?.includeLlmsFile
-        });
+        // Use intelligent search if enabled
+        if (config?.intelligentSearch !== false && orchestratorRef.current && algoliaConfig) {
+          const documents = await orchestratorRef.current.performIntelligentSearch(
+            query,
+            algoliaConfig.searchClient,
+            algoliaConfig.indexName,
+            config?.prompts?.maxDocuments || DEFAULT_CONFIG.prompts.maxDocuments
+          );
 
-        if (contents.length === 0) {
-          // Use search result data directly as fallback
-          const fallbackContents = generateFallbackContent(searchResults, query);
-          
-          if (fallbackContents.length > 0) {
-            setRetrievedContent(fallbackContents);
-            setRetrievalStatus(`Using search results directly (${fallbackContents.length} results)`);
-            setFetchFailed(true);
-          } else {
-            throw new Error('Could not retrieve or generate any content for this search');
+          if (documents.length === 0) {
+            throw new Error('Could not find any relevant documentation for your query');
           }
+
+          setRetrievedContent(documents);
+          
+          // Extract query analysis and AI call count from the orchestrator
+          const searchContext = (orchestratorRef.current as any).context;
+          if (searchContext?.queryAnalysisResult) {
+            setQueryAnalysis(searchContext.queryAnalysisResult);
+          }
+          if (searchContext?.aiCallCount) {
+            setAiCallCount(searchContext.aiCallCount);
+          }
+          
+          setSearchStep({
+            step: 'synthesizing',
+            message: `Found ${documents.length} relevant documents`,
+            progress: 95
+          });
         } else {
-          setRetrievedContent(contents);
-          setRetrievalStatus(`Retrieved content from ${contents.length} documents`);
+          // Fallback to original search behavior
+          if (searchResults.length === 0) {
+            throw new Error('No search results available to retrieve content from');
+          }
+
+          setSearchStep({
+            step: 'retrieving',
+            message: modalTexts.retrievingText,
+            progress: 50
+          });
+
+          const contents = await retrieveDocumentContent(searchResults, 
+            config?.prompts?.maxDocuments || 5
+          );
+
+          // Convert to DocumentContent format
+          const documents: DocumentContent[] = contents.map((content, index) => ({
+            url: searchResults[index]?.url || '',
+            title: searchResults[index]?.hierarchy?.lvl1 || searchResults[index]?.hierarchy?.lvl0 || 'Document',
+            content: content
+          }));
+
+          setRetrievedContent(documents);
         }
       } catch (err: any) {
-        setRetrievalStatus('Failed to retrieve document content');
+        setSearchStep(null);
         setError(
-          `Unable to retrieve documentation content: ${err.message || 'Unknown error'}. Please try a different search query.`
+          `Unable to find relevant documentation: ${err.message || 'Unknown error'}. Please try a different search query.`
         );
         setLoading(false);
       }
     }
 
     fetchContent();
-  }, [query, searchResults, isRetrying, modalTexts.retrievingText, config]);
+  }, [query, searchResults.length, algoliaConfig?.indexName]); // Minimal dependencies
 
   // Then, generate answer based on retrieved content
   useEffect(() => {
     async function fetchAnswer() {
-      if (!query) {
+      if (!query || !proxyUrl) {
         setLoading(false);
         return;
       }
@@ -205,86 +300,92 @@ export function AISearchModal({
         setLoading(false);
         return;
       }
+      
+      // Skip if we already have a cached answer
+      if (isFromCache && answer) {
+        setLoading(false);
+        return;
+      }
+
+      // Skip if we already have an answer
+      if (answer) {
+        setLoading(false);
+        return;
+      }
+
+      // Prevent duplicate AI calls using ref
+      if (answerGenerationStartedRef.current || isGeneratingAnswer) {
+        return;
+      }
 
       try {
+        answerGenerationStartedRef.current = true;
+        setIsGeneratingAnswer(true);
         setLoading(true);
         setError(null);
-        setRetrievalStatus(modalTexts.generatingText);
+        setSearchStep({
+          step: 'synthesizing',
+          message: modalTexts.generatingText,
+          progress: 100
+        });
 
         // Create system and user prompts using config options
-        const systemPrompt = createSystemPrompt({
-          systemPrompt: config?.prompts?.systemPrompt,
-          siteName: config?.prompts?.siteName
-        });
+        const systemPrompt = createSystemPrompt(
+          config?.prompts?.siteName || 'this documentation'
+        );
         
-        // Summarize content with AI if enabled in config
-        let processedContent = retrievedContent;
-        if (config?.prompts?.useSummarization && proxyUrl) {
-          setRetrievalStatus('Optimizing document content...');
-          
-          // Use proxy for summarization
-          const summary = await createProxySummarization(
-            proxyUrl,
-            query,
-            retrievedContent,
-            {
-              model: config?.openAI?.model || 'gpt-4',
-              maxTokens: config?.openAI?.maxTokens || 2000,
-              systemPrompt: config?.prompts?.systemPrompt
-            }
-          );
-          processedContent = [summary];
-          
-          setRetrievalStatus(modalTexts.generatingText);
-        }
+        // Convert DocumentContent to string array for existing prompt function
+        const processedContent = retrievedContent.map(doc => 
+          `${doc.title}\nURL: ${doc.url}\n\n${doc.content}`
+        );
         
         const userPrompt = createUserPrompt(
           query, 
           processedContent, 
-          searchResults, 
+          searchResults
+        );
+
+        // Use proxy for chat completion
+        const response = await createProxyChatCompletion(
+          proxyUrl,
+          [
+            {
+              role: 'system',
+              content: systemPrompt,
+            },
+            {
+              role: 'user',
+              content: userPrompt,
+            },
+          ],
           {
-            userPrompt: config?.prompts?.userPrompt,
-            maxDocuments: config?.prompts?.maxDocuments,
-            highlightCode: config?.prompts?.highlightCode
+            model: config?.openAI?.model || DEFAULT_CONFIG.openAI.model,
+            maxTokens: config?.openAI?.maxTokens || DEFAULT_CONFIG.openAI.maxTokens,
+            temperature: config?.openAI?.temperature || DEFAULT_CONFIG.openAI.temperature,
           }
         );
 
-        if (proxyUrl) {
-          // Use proxy for chat completion
-          const response = await createProxyChatCompletion(
-            proxyUrl,
-            [
-              {
-                role: 'system',
-                content: systemPrompt,
-              },
-              {
-                role: 'user',
-                content: userPrompt,
-              },
-            ],
-            {
-              model: config?.openAI?.model || 'gpt-4',
-              maxTokens: config?.openAI?.maxTokens || 2000,
-              temperature: config?.openAI?.temperature || 0.5,
-            }
-          );
-
-          const generatedAnswer = response.choices[0]?.message?.content;
-          
-          setAnswer(
-            generatedAnswer ||
-              "Sorry, I couldn't find relevant information in our documentation to answer your question."
-          );
-          
-          // Track successful AI query if function is provided
-          if (config?.onAIQuery) {
-            config.onAIQuery(query, true);
-          } else {
-            trackAIQuery(query, true);
-          }
+        const generatedAnswer = response.choices[0]?.message?.content;
+        
+        // Increment AI call count for synthesis
+        setAiCallCount(prev => prev + 1);
+        
+        const finalAnswer = generatedAnswer ||
+          "Sorry, I couldn't find relevant information in our documentation to answer your question.";
+        
+        setAnswer(finalAnswer);
+        
+        // Cache the complete response if caching is enabled
+        const enableCaching = config?.research?.enableCaching ?? DEFAULT_CONFIG.research.enableCaching;
+        if (enableCaching) {
+          cache.set(query, finalAnswer, queryAnalysis, retrievedContent);
+        }
+        
+        // Track successful AI query if function is provided
+        if (config?.onAIQuery) {
+          config.onAIQuery(query, true);
         } else {
-          setError('Proxy URL is not configured. Please check your configuration.');
+          trackAIQuery(query, true);
         }
       } catch (err: any) {
         setError(err?.message || 'Failed to generate an answer. Please try again later.');
@@ -297,44 +398,36 @@ export function AISearchModal({
         }
       } finally {
         setLoading(false);
-        setRetrievalStatus('');
+        setSearchStep(null);
+        setIsGeneratingAnswer(false);
       }
     }
 
     fetchAnswer();
-  }, [query, retrievedContent, searchResults, proxyUrl, isRetrying, config, modalTexts.generatingText]);
+  }, [query, retrievedContent.length, proxyUrl]); // Simplified dependencies to prevent re-renders
 
   // Effect to handle markdown response
   useEffect(() => {
     if (answer) {
       let markdownContent = answer;
 
-      // Add a note about direct links if content fetching failed
-      if (fetchFailed && searchResults.length > 0) {
-        const linksList = searchResults
-          .slice(0, 3)
-          .map((result, idx) => {
-            const title =
-              result.hierarchy?.lvl0 || result.hierarchy?.lvl1 || 'Document ' + (idx + 1);
-            return `- [${title}](${result.url})`;
-          })
-          .join('\n');
+      // Add source references if using intelligent search
+      if (config?.intelligentSearch !== false && retrievedContent.length > 0) {
+        const sourcesMarkdown = `
 
-        const noticeMarkdown = `
-> **Note**
-> 
-> I couldn't access the full content of the documentation pages.
-> You may find more complete information by visiting these pages directly:
->
-${linksList}
-        `;
+---
 
-        markdownContent += noticeMarkdown;
+**Sources:**
+${retrievedContent.slice(0, 5).map((doc, idx) => 
+  `${idx + 1}. [${doc.title}](${doc.url})`
+).join('\n')}`;
+
+        markdownContent += sourcesMarkdown;
       }
 
       setFormattedAnswer(markdownContent);
     }
-  }, [answer, fetchFailed, searchResults]);
+  }, [answer, config, retrievedContent]);
 
   // Apply blockquote admonition classes after render
   useEffect(() => {
@@ -401,7 +494,30 @@ ${linksList}
           {loading ? (
             <div className="ai-loading">
               <div className="ai-loading-spinner"></div>
-              <div>{retrievalStatus || modalTexts.loadingText}</div>
+              <div className="ai-loading-status">
+                {searchStep ? (
+                  <>
+                    <div className="ai-progress-bar">
+                      <div 
+                        className="ai-progress-fill"
+                        style={{ width: `${searchStep.progress}%` }}
+                      />
+                    </div>
+                    <div className="ai-step-message">{searchStep.message}</div>
+                    {searchStep.details && searchStep.details.length > 0 && (
+                      <div className="ai-step-details">
+                        {searchStep.details.map((detail, idx) => (
+                          <div key={idx} className="ai-step-detail">
+                            {detail}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div>{modalTexts.loadingText}</div>
+                )}
+              </div>
             </div>
           ) : error ? (
             <div className="ai-error">
@@ -508,8 +624,19 @@ ${linksList}
         </div>
 
         <div className="ai-modal-footer">
-          {modalTexts.footerText} • Using content from {retrievedContent.length} documentation pages
-          {fetchFailed ? ' (search results only)' : ''}
+          {isFromCache ? (
+            <span>
+              {modalTexts.footerText} • Retrieved from cache
+            </span>
+          ) : (
+            <span>
+              {config?.intelligentSearch !== false 
+                ? `${modalTexts.footerText} • Deep research: ${retrievedContent.length} documents analyzed • ${aiCallCount} AI calls`
+                : `${modalTexts.footerText} • ${retrievedContent.length} documents • ${aiCallCount} AI calls`
+              }
+              {fetchFailed ? ' (search results only)' : ''}
+            </span>
+          )}
         </div>
       </div>
     </div>

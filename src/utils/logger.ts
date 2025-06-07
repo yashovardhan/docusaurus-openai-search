@@ -120,20 +120,6 @@ export class AISearchLogger {
   }
 
   /**
-   * Log summarization process
-   */
-  logSummarization(originalContent: string[], summarizedContent: string): void {
-    if (!this.enabled) return;
-    
-    console.group(`${this.prefix} Content Summarization`);
-    console.log('Original content count:', originalContent.length);
-    console.log('Original total length:', originalContent.reduce((sum, c) => sum + c.length, 0));
-    console.log('Summarized length:', summarizedContent.length);
-    console.log('Compression ratio:', (summarizedContent.length / originalContent.reduce((sum, c) => sum + c.length, 0) * 100).toFixed(2) + '%');
-    console.groupEnd();
-  }
-
-  /**
    * Log performance metrics
    */
   logPerformance(operation: string, startTime: number): void {

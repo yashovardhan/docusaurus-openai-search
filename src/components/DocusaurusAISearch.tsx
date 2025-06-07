@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { DocSearchButton, useDocSearchKeyboardEvents } from '@docsearch/react';
 import Link from '@docusaurus/Link';
@@ -8,10 +8,11 @@ import { useAlgoliaContextualFacetFilters, useSearchResultUrlProcessor } from '@
 import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { AISearchModal } from './AISearchModal';
-import { rankSearchResultsByRelevance } from '../utils';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '../utils';
 import { DocusaurusAISearchProps } from '../types';
 import { InternalDocSearchHit } from '@docsearch/react';
+import algoliasearch from 'algoliasearch';
+import { DEFAULT_CONFIG } from '../config/defaults';
 
 import '@docsearch/css';
 import '../styles.css';
@@ -209,6 +210,18 @@ export function DocusaurusAISearch({
   const [aiQuery, setAiQuery] = useState('');
   const [searchResults, setSearchResults] = useState<InternalDocSearchHit[]>([]);
   
+  // Create Algolia search client
+  const searchClient = useMemo(
+    () => algoliasearch(appId, apiKey),
+    [appId, apiKey]
+  );
+  
+  // Create algoliaConfig object for AI modal
+  const algoliaConfig = useMemo(
+    () => ({ searchClient, indexName }),
+    [searchClient, indexName]
+  );
+  
   const prepareSearchContainer = useCallback(() => {
     if (!searchContainer.current) {
       const divElement = document.createElement('div');
@@ -289,8 +302,10 @@ export function DocusaurusAISearch({
             const aiButton = document.createElement('div');
             aiButton.className = 'ai-search-header';
             
-            const buttonText = aiConfig?.ui?.aiButtonText || `Ask AI about "${query}"`;
-            const buttonAriaLabel = aiConfig?.ui?.aiButtonAriaLabel || 'Ask AI about this question';
+            const buttonText = aiConfig?.ui?.aiButtonText?.replace('{query}', query) || 
+                             DEFAULT_CONFIG.ui.aiButtonText.replace('{query}', query);
+            const buttonAriaLabel = aiConfig?.ui?.aiButtonAriaLabel || 
+                                  DEFAULT_CONFIG.ui.aiButtonAriaLabel;
             
             aiButton.innerHTML = `
               <button class="ai-search-button-header" aria-label="${buttonAriaLabel}">
@@ -343,9 +358,7 @@ export function DocusaurusAISearch({
                     };
                   });
                   
-                  const rankedResults = rankSearchResultsByRelevance(query, searchResultItems as InternalDocSearchHit[]);
-                  
-                  handleAskAI(query, rankedResults);
+                  handleAskAI(query, searchResultItems as InternalDocSearchHit[]);
                   closeModal();
                 });
               }
@@ -436,12 +449,7 @@ export function DocusaurusAISearch({
                   };
                 });
                 
-                const rankedResults = rankSearchResultsByRelevance(
-                  searchInput.value.trim(), 
-                  searchResultItems as InternalDocSearchHit[]
-                );
-                
-                handleAskAI(searchInput.value.trim(), rankedResults);
+                handleAskAI(searchInput.value.trim(), searchResultItems as InternalDocSearchHit[]);
                 closeModal();
               }
             }
@@ -511,14 +519,18 @@ export function DocusaurusAISearch({
         searchContainer.current
       )}
       
-      {showAIModal && (
-        <AISearchModal
-          query={aiQuery}
-          searchResults={searchResults}
-          onClose={() => setShowAIModal(false)}
-          config={aiConfig}
-          themeConfig={themeConfig}
-        />
+      {showAIModal && createPortal(
+        <div className="docusaurus-openai-search">
+          <AISearchModal
+            query={aiQuery}
+            onClose={() => setShowAIModal(false)}
+            searchResults={searchResults}
+            config={aiConfig}
+            themeConfig={themeConfig}
+            algoliaConfig={algoliaConfig}
+          />
+        </div>,
+        document.body
       )}
     </div>
   );
