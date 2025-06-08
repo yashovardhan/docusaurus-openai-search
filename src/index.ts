@@ -4,12 +4,6 @@ import './styles.css';
 // Export main component
 export { DocusaurusAISearch } from './components/DocusaurusAISearch';
 
-// Export proxy utilities
-export { 
-  makeProxyRequest, 
-  createProxyChatCompletion
-} from './utils/proxy';
-
 // Export search orchestrator for advanced usage
 export { 
   SearchOrchestrator,
@@ -19,19 +13,14 @@ export {
 
 // Export default configuration for reference
 export { 
-  DEFAULT_CONFIG,
-  QUERY_ANALYSIS_SYSTEM_PROMPT,
-  ENHANCED_QUERY_ANALYSIS_PROMPT,
+  DEFAULT_CONFIG
 } from './config/defaults';
 
 // Export configuration types
 export type { 
   DocusaurusAISearchProps,
   DocusaurusAISearchConfig,
-  OpenAIOptions,
+  BackendOptions,
   UIOptions,
-  PromptOptions
+  ContextOptions
 } from './types';
-
-// Export proxy types
-export type { ProxyRequestOptions } from './utils/proxy';

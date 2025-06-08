@@ -299,4 +299,79 @@
   font-weight: var(--ifm-font-weight-semibold);
 }
 
-/* Remove all the redundant custom admonition styles and custom CSS variables */ 
+/* Remove all the redundant custom admonition styles and custom CSS variables */
+
+/* AI Progress Details */
+.ai-progress-details {
+  margin-top: 20px;
+  text-align: left;
+  width: 100%;
+  max-width: 500px;
+}
+
+.ai-keywords-section {
+  margin-bottom: 16px;
+}
+
+.ai-keywords-section strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.ai-keywords-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-keyword-item {
+  background-color: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary-darker);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  border: 1px solid var(--ifm-color-primary-light);
+}
+
+.ai-documents-section {
+  margin-top: 16px;
+}
+
+.ai-documents-section strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.ai-document-links {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+}
+
+.ai-document-link-item {
+  margin-bottom: 4px;
+  font-size: 0.875rem;
+}
+
+.ai-document-link-item a {
+  color: var(--ifm-link-color);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.ai-document-link-item a:hover {
+  color: var(--ifm-link-hover-color);
+  text-decoration: underline;
+}
+
+.ai-document-link-more {
+  font-style: italic;
+  color: var(--ifm-color-secondary-darkest);
+  font-size: 0.875rem;
+  margin-top: 4px;
+} 

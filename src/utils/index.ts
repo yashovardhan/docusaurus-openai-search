@@ -1,26 +1,13 @@
 /**
- * Central exports for all utility modules
+ * Central export of all utility functions
  */
-
-// Prompt utilities
-export { 
-  DEFAULT_RESPONSE_GUIDELINES,
-  createSystemPrompt, 
-  createUserPrompt 
-} from './prompts';
 
 // Logger utilities
 export { createLogger, getLogger } from './logger';
 
-// Proxy utilities
-export { createProxyChatCompletion } from './proxy';
+// Search orchestration
+export { SearchOrchestrator } from './searchOrchestrator';
+export type { SearchStep, DocumentContent } from './searchOrchestrator';
 
-// Search orchestrator
-export { 
-  SearchOrchestrator, 
-  type SearchStep, 
-  type DocumentContent 
-} from './searchOrchestrator';
-
-// Response cache
+// Response caching
 export { ResponseCache } from './responseCache'; 

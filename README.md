@@ -1,15 +1,44 @@
 # Docusaurus OpenAI Search
 
-AI-enhanced search component for Docusaurus using OpenAI's API to provide AI-powered answers based on your documentation content.
+An intelligent AI-powered search plugin for Docusaurus that enhances the default Algolia search with OpenAI capabilities. This plugin provides a seamless search experience where users can get AI-generated answers based on their documentation content.
+
+## Architecture
+
+This plugin follows a clean separation of concerns:
+
+- **Frontend SDK**: Minimal UI layer that coordinates search flow
+  - Provides the "Use AI" button in search results
+  - Manages the search progress UI
+  - Sends queries to backend and displays results
+  - **No AI logic or prompts** - purely UI and coordination
+  
+- **Backend Service**: The brain of the AI search (separate repository)
+  - **All AI logic and prompts** are defined here
+  - Generates optimized search keywords from queries
+  - Creates comprehensive answers using RAG
+  - Manages all OpenAI API interactions
+  - Keeps API keys secure on the server
 
 ## Features
 
-- Drop-in replacement for Docusaurus's default Algolia DocSearch
-- AI-powered answer generation based on search results
-- Extracts content from documentation pages for contextual answers
-- Customizable prompts, models, and UI
-- Full TypeScript support
-- Secure backend proxy for API key protection
+✨ **Intelligent Search Enhancement**: Extends Algolia DocSearch with AI capabilities
+🤖 **Smart Keyword Generation**: Backend generates optimal search keywords from user queries
+📚 **RAG-based Answers**: Retrieves relevant documents and generates comprehensive answers
+🔄 **Real-time Progress**: Shows detailed progress including keywords, documents found, and links
+🎨 **Fully Customizable UI**: Customize the AI search modal appearance
+🔒 **Secure Architecture**: AI logic runs on backend, keeping API keys safe
+⚡ **Response Caching**: Caches AI responses for improved performance
+
+## How It Works
+
+1. User performs a regular search
+2. If results aren't satisfactory, they click "Use AI"
+3. Frontend sends query to backend with system context
+4. Backend returns optimized search keywords
+5. Frontend searches for each keyword using Algolia
+6. Frontend sends collected documents to backend
+7. Backend generates comprehensive answer using RAG
+8. User sees the complete answer with source links
 
 ## Installation
 
@@ -19,19 +48,20 @@ npm install docusaurus-openai-search
 
 ## Setup
 
-### 1. Deploy the Backend Proxy
+### 1. Deploy the Backend Service
 
-For security, this plugin requires a backend proxy service to keep your OpenAI API key safe on the server side.
+For security, this plugin requires a backend service to handle all AI operations.
 
-The recommended backend proxy is available at [docusaurus-openai-search-backend](https://github.com/yashovardhan/docusaurus-openai-search-backend). It's a simple Node.js server that:
-- Keeps your OpenAI API key secure
-- Validates requests from your allowed domains
-- Provides rate limiting to prevent abuse
+The backend service is available at [docusaurus-openai-search-backend](https://github.com/yashovardhan/docusaurus-openai-search-backend). It handles:
+- All AI logic and prompts
+- Keyword generation from queries
+- RAG-based answer generation
+- Secure OpenAI API key management
 
 Deploy it to any Node.js hosting service:
 
 ```bash
-# Clone the backend proxy repository
+# Clone the backend repository
 git clone https://github.com/yashovardhan/docusaurus-openai-search-backend.git
 cd docusaurus-openai-search-backend
 
@@ -71,12 +101,9 @@ export default function SearchBar() {
 
   // AI search configuration
   const aiConfig = {
-    // OpenAI API settings
-    openAI: {
-      proxyUrl: "https://your-backend-url.com", // Required
-      model: "gpt-4",
-      maxTokens: 10000,
-      temperature: 0.3,
+    // Backend service configuration
+    backend: {
+      url: "https://your-backend-url.com", // Required
     },
     // UI customization
     ui: {
@@ -84,11 +111,10 @@ export default function SearchBar() {
       modalTitle: "AI Assistant",
       footerText: "Powered by AI",
     },
-    // Prompt customization
-    prompts: {
+    // Context to send to backend
+    context: {
       siteName: "Your Site Name",
-      // Enable AI summarization of content before sending to main LLM
-      useSummarization: true,
+      systemContext: "This is documentation for [your product description]",
     },
     // Enable detailed logging for debugging (disable in production)
     enableLogging: false,
@@ -96,79 +122,6 @@ export default function SearchBar() {
   
   return <DocusaurusAISearch algoliaConfig={algolia} aiConfig={aiConfig} />;
 }
-```
-
-## Crafting Effective System Prompts
-
-A well-crafted system prompt is crucial for getting high-quality answers from the AI assistant. Here's a guide to creating effective system prompts for documentation:
-
-### System Prompt Structure
-
-An effective system prompt typically includes:
-
-1. **Role Definition**: Define the AI's role and expertise
-2. **Response Guidelines**: Set clear expectations for answer quality and style
-3. **Domain Knowledge**: Provide key facts about your product/platform
-4. **Formatting Preferences**: Specify how answers should be formatted
-
-### Example System Prompt Template
-
-Here's an annotated example of an effective system prompt:
-
-```js
-const systemPrompt =
-  // Role definition - clearly establish the assistant's identity and purpose
-  "You are a helpful [PRODUCT] expert assistant. Your goal is to provide detailed, accurate information about [PRODUCT]'s [FEATURES] to [TARGET USERS].\n\n" +
-  
-  // Response guidelines - establish clear expectations for answers
-  "RESPONSE GUIDELINES:\n" +
-  "1. BE HELPFUL: Always try to provide SOME guidance, even when the documentation doesn't contain a perfect answer.\n" +
-  "2. PRIORITIZE USER SUCCESS: Focus on helping the user accomplish their task with [PRODUCT].\n" +
-  "3. USE DOCUMENTATION FIRST: Base your answers primarily on the provided documentation snippets.\n" +
-  "4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available, as they're extremely valuable to developers.\n" +
-  "5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps based on standard [PRODUCT] patterns.\n" +
-  "6. BE HONEST: If you truly can't provide an answer, suggest relevant [PRODUCT] concepts or documentation sections that might help instead.\n" +
-  "7. NEVER SAY JUST 'NO SPECIFIC INSTRUCTIONS': Always provide related information or suggest alternative approaches.\n\n" +
-  
-  // Domain knowledge - provide key facts about your product/platform
-  "ABOUT [PRODUCT]:\n" +
-  "- [KEY FACT 1 ABOUT YOUR PRODUCT]\n" +
-  "- [KEY FACT 2 ABOUT YOUR PRODUCT]\n" +
-  "- [KEY FACT 3 ABOUT YOUR PRODUCT]\n" +
-  "- [KEY TECHNICAL DETAILS THAT HELP ANSWER COMMON QUESTIONS]";
-```
-
-### Best Practices
-
-1. **Be specific about response format**: Explicitly state if you want code examples, step-by-step instructions, etc.
-2. **Include critical domain knowledge**: Add key facts that help the AI understand your product's unique aspects
-3. **Set clear guardrails**: Define what the AI should do when it doesn't have a perfect answer
-4. **Balance brevity and detail**: Include enough context without overwhelming the model
-5. **Focus on user success**: Orient the prompt toward solving user problems, not just providing information
-
-### Tips for Technical Documentation
-
-For technical documentation, consider:
-
-1. **Emphasize code examples**: Instruct the AI to prioritize showing code snippets when relevant
-2. **Address common user scenarios**: Mention key use cases your users frequently encounter
-3. **Clarify technical terminology**: If your product uses specific technical terms, include brief definitions
-4. **Reference documentation structure**: If your docs have a specific organization, explain it briefly
-
-When implementing the system prompt in your SearchBar component:
-
-```jsx
-// In your SearchBar component
-const systemPrompt = 
-  "You are a helpful [YOUR PRODUCT] expert assistant...[rest of your prompt]";
-
-const aiConfig = {
-  // ...other config
-  prompts: {
-    siteName: "Your Site Name",
-    systemPrompt: systemPrompt,
-  },
-};
 ```
 
 ## API Reference
@@ -207,24 +160,23 @@ The `aiConfig` prop configures the AI-powered search features:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `openAI` | object | Yes | OpenAI API settings |
+| `backend` | object | Yes | Backend service configuration |
 | `ui` | object | No | UI customization options |
-| `prompts` | object | No | Prompt generation and content handling options |
+| `context` | object | No | Context to send to backend |
 | `enabled` | boolean | No | Enable or disable AI search features (default: `true`) |
-| `intelligentSearch` | boolean | No | Enable Perplexity-style intelligent search (default: `true`) |
+| `maxSearchQueries` | number | No | Maximum number of search queries to request from backend (default: `5`) |
+| `enableCaching` | boolean | No | Enable response caching (default: `true`) |
+| `cacheTTL` | number | No | Cache time-to-live in seconds (default: `3600`) |
 | `onAIQuery` | function | No | Callback function when an AI query is made |
-| `enableLogging` | boolean | No | Enable detailed logging for debugging RAG pipeline (default: `false`) |
+| `enableLogging` | boolean | No | Enable detailed logging for debugging (default: `false`) |
 
-### OpenAI Options
+### Backend Options
 
-The `openAI` object configures the OpenAI API settings:
+The `backend` object configures the connection to your backend service:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `proxyUrl` | string | Yes | URL of your backend proxy service |
-| `model` | string | No | Model to use for AI search queries (default: `gpt-4`) |
-| `maxTokens` | number | No | Maximum tokens to use in AI requests (default: `2000`) |
-| `temperature` | number | No | Temperature for AI responses from 0-1 (default: `0.5`) |
+| `url` | string | Yes | URL of your backend service that handles all AI operations |
 
 ### UI Options
 
@@ -232,117 +184,39 @@ The `ui` object customizes the appearance and text of UI elements:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `aiButtonText` | string | No | Custom text for the AI button (default: `Ask AI about "query"`) |
-| `aiButtonAriaLabel` | string | No | ARIA label for the AI button (default: `Ask AI about this question`) |
+| `aiButtonText` | string | No | Custom text for the AI button (default: `Ask AI about "{query}"`) |
 | `modalTitle` | string | No | Title of the AI modal (default: `AI Answer`) |
-| `loadingText` | string | No | Loading text in the AI modal (default: `Generating answer based on documentation...`) |
 | `errorText` | string | No | Error text when AI generation fails (default: `Unable to generate an answer. Please try again later.`) |
-| `retryButtonText` | string | No | Text for retry button (default: `Retry Query`) |
-| `footerText` | string | No | Footer text in the AI modal (default: `Powered by AI • Using content from documentation`) |
-| `retrievingText` | string | No | Text shown when retrieving document content (default: `Retrieving document content...`) |
-| `generatingText` | string | No | Text shown when generating AI response (default: `Generating AI response...`) |
+| `footerText` | string | No | Footer text in the AI modal (default: `Powered by AI`) |
 
-### Prompt Options
+### Context Options
 
-The `prompts` object configures how prompts are generated for the AI:
+The `context` object provides information about your product to send to the backend:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `systemPrompt` | string | No | Custom system prompt template to replace the default one |
-| `userPrompt` | string | No | Custom user prompt template to replace the default one |
-| `siteName` | string | No | Name of your site or product to use in default prompts (default: `Documentation`) |
+| `siteName` | string | No | Name of your site or product (default: `this documentation`) |
 | `systemContext` | string | No | Additional context about your product/service to help AI understand queries better |
-| `maxDocuments` | number | No | Maximum number of documents to include in context (default: `4`) |
-| `highlightCode` | boolean | No | Whether to include code blocks separately in the prompt |
-| `includeLlmsFile` | boolean | No | Whether to include `llms.txt` from the site root if available. This file provides additional context for AI responses. Enabled by default, set to `false` to disable. |
-| `useSummarization` | boolean | No | Whether to use AI-based summarization before sending content to the main LLM. This shrinks and focuses the content to be more relevant to the query. (default: `false`) |
 
-### Enhanced Query Analysis (Deep Research Mode)
-
-When `intelligentSearch` is enabled (default), the search performs a sophisticated two-step AI analysis:
-
-#### How It Works
-
-1. **Query Understanding**: The AI first analyzes your query using the system context to understand:
-   - What the user is really asking about
-   - Key concepts and terminology related to the query
-   - Up to 5 specific search keywords that will find relevant documentation
-
-2. **Multi-faceted Search**: For each keyword identified:
-   - Performs a targeted search
-   - Retrieves the top 2 most relevant documents
-   - Collects up to 10 total documents for comprehensive coverage
-
-3. **Synthesis**: The collected documents are sent to the AI for final answer generation
-
-#### Benefits
-
-- **Better Understanding**: AI uses your product context to decode ambiguous queries
-- **Comprehensive Coverage**: Multiple targeted searches find more relevant content
-- **Transparent Process**: Users see exactly what the AI is doing at each step
-
-#### Example Configuration with System Context
+### Example Configuration
 
 ```jsx
 const aiConfig = {
-  openAI: {
-    proxyUrl: "https://your-backend-url.com",
-    model: "gpt-4",
+  backend: {
+    url: "https://your-backend-url.com",
   },
-  prompts: {
-    siteName: "MyProduct",
-    // Provide context about your product to help AI understand queries
-    systemContext: `MyProduct is a modern data analytics platform that helps businesses 
-    analyze and visualize their data. Key features include:
-    - Real-time dashboards
-    - SQL query builder
-    - Data pipeline management
-    - API integrations
-    - Custom reporting
-    
-    Common use cases: business intelligence, data warehousing, and analytics.`,
-    maxDocuments: 10, // Collect up to 10 documents
+  ui: {
+    aiButtonText: "Ask AI",
+    modalTitle: "AI Assistant",
+    footerText: "Powered by AI",
   },
-  intelligentSearch: true, // Enable deep research mode (default)
+  context: {
+    siteName: "Your Site Name",
+    systemContext: "This is documentation for [your product description]",
+  },
+  enableLogging: false,
 };
 ```
-
-#### What Users See
-
-During the search process, users see detailed progress:
-
-1. **Analysis Phase**:
-   - "Analyzing your question to understand what you're looking for..."
-   - Shows what the AI understood from the query
-   - Displays the search keywords identified
-
-2. **Search Phase**:
-   - Progress for each keyword search
-   - Number of results found for each keyword
-   - Total documents collected
-
-3. **Synthesis Phase**:
-   - "Preparing final results for AI synthesis..."
-   - Number of documents being analyzed
-
-This transparency helps users understand how their query is being processed and builds trust in the results.
-
-### Event Callbacks
-
-| Function | Parameters | Description |
-|----------|------------|-------------|
-| `onAIQuery` | `(query: string, success: boolean) => void` | Called when an AI query is made. `query` is the search string, `success` indicates whether the query was successful |
-
-#### How It Works
-
-The search ranking algorithm uses this analysis to:
-
-1. **Disambiguate similar terms**: Distinguishes between "React" and "React Native" to show more relevant results
-2. **Match user intent**: Prioritizes guides for "how to" queries, API docs for API queries, etc.
-3. **Apply platform-specific ranking**: Boosts web-related results for React queries, mobile results for React Native, etc.
-4. **Penalize mismatches**: Reduces ranking for results that don't match the detected technology or platform
-
-This intelligent query analysis significantly improves search relevance, especially for documentation sites with multiple technologies, platforms, or frameworks.
 
 ## Styling Customization
 
@@ -413,108 +287,9 @@ Or if you prefer more spacious UI:
 }
 ```
 
-## Custom Prompt Templates
-
-You can fully customize the system and user prompts with custom templates.
-
-### System Prompt
-
-The default system prompt (when no custom prompt is provided):
-
-```
-You are a helpful {siteName} assistant. Your goal is to provide detailed, accurate information about {siteName} based on the documentation provided.
-
-RESPONSE GUIDELINES:
-1. BE HELPFUL: Always try to provide SOME guidance, even when the documentation doesn't contain a perfect answer.
-2. PRIORITIZE USER SUCCESS: Focus on helping the user accomplish their task.
-3. USE DOCUMENTATION FIRST: Base your answers primarily on the provided documentation snippets.
-4. CODE EXAMPLES ARE CRUCIAL: Always include code snippets from the documentation when available.
-5. INFERENCE IS ALLOWED: When documentation contains related but not exact information, use reasonable inference to bridge gaps.
-6. BE HONEST: If you truly can't provide an answer, suggest relevant concepts or documentation sections that might help instead.
-7. FORMAT YOUR RESPONSE: Use markdown formatting for headings, code blocks, and lists to make your response easy to read.
-```
-
-### User Prompt
-
-The default user prompt contains the following elements:
-- The user's search query
-- Content from the most relevant documentation sections
-- Source references to the original documentation pages
-
-When creating a custom user prompt, you can use these template variables:
-- `{query}` - The user's search query
-- `{context}` - The extracted documentation content
-- `{sources}` - References to the source documentation
-
-Example custom user prompt:
-
-```
-Answer this question: {query}
-
-Here's relevant documentation:
-{context}
-
-Sources:
-{sources}
-
-Keep your answer under 300 words and include code examples when available.
-```
-
-## Using llms.txt for Enhanced AI Responses
-
-When using LLM models like GPT-4 to enhance your documentation search, you can provide additional global context to improve the AI's understanding of your product/service by creating an `llms.txt` file.
-
-### What is llms.txt?
-
-The `llms.txt` file is a plain text file you can place at the root of your Docusaurus site that contains important context about your product, service, or documentation that you want the AI to know. This information will be included in every AI search query when the `includeLlmsFile` option is enabled.
-
-### How to Use llms.txt
-
-1. Create a file named `llms.txt` in your site's `static/` directory (so it gets copied to the root of your built site)
-2. Add important information about your product/service that the AI should always know about
-3. The feature is enabled by default. If you need to disable it, set `includeLlmsFile: false` in your AI configuration
-
-## AI Content Summarization
-
-To enhance the quality of AI responses, you can enable content summarization that uses a smaller AI model to first process and focus the retrieved content before sending it to the main LLM.
-
-### How Content Summarization Works
-
-When enabled, the content retrieved from your documentation pages is sent to an AI model which:
-
-1. Summarizes the content while preserving key information
-2. Focuses the content specifically on the user's query
-3. Maintains all code examples and technical details
-4. Removes irrelevant information
-
-This process creates more targeted context for the main LLM, resulting in more accurate and concise answers. By default, the system uses the same model and token settings as configured for the main answer generation, ensuring consistency and quality in the summarization process.
-
-### Example Configuration with Summarization
-
-```jsx
-// In your SearchBar component
-const aiConfig = {
-  openAI: {
-    proxyUrl: "https://your-backend-url.com",
-    model: "gpt-4",
-    maxTokens: 10000,
-    temperature: 0.3,
-  },
-  prompts: {
-    siteName: "Your Site Name",
-    // Enable AI summarization of content before sending to main LLM
-    useSummarization: true,
-    // Other prompt options...
-  },
-  // Other configuration...
-};
-
-return <DocusaurusAISearch algoliaConfig={algolia} aiConfig={aiConfig} />;
-```
-
 ## Debugging with enableLogging
 
-The `enableLogging` parameter provides comprehensive logging throughout the RAG (Retrieval-Augmented Generation) pipeline to help you debug and optimize your AI search implementation.
+The `enableLogging` parameter provides detailed logging to help you debug the search flow.
 
 ### Enabling Debug Logging
 
@@ -522,161 +297,46 @@ To enable detailed logging, set `enableLogging: true` in your AI configuration:
 
 ```jsx
 const aiConfig = {
-  openAI: {
-    proxyUrl: "https://your-backend-url.com",
-    model: "gpt-4",
-    maxTokens: 10000,
-    temperature: 0.3,
+  backend: {
+    url: "https://your-backend-url.com",
   },
   // Enable detailed logging
   enableLogging: true,
-  // Other configuration...
 };
 ```
 
 ### What Gets Logged
 
-When logging is enabled, you'll see detailed information about:
+When logging is enabled, you'll see information about:
 
-1. **Search Query Processing**
-   - The user's query
-   - Number of search results from Algolia
-   - Details about each search result (URL, title, snippet)
-
-2. **Content Retrieval**
-   - URLs being fetched
-   - Success/failure status of each fetch
-   - Content length and preview
-   - Fallback mechanisms when direct fetching fails
-   - llms.txt file retrieval (if enabled)
-
-3. **RAG Content Preparation**
-   - Number of documents being processed
-   - Length and preview of each document
-   - Content verification and quality checks
-
-4. **Prompt Generation**
-   - System prompt (full text)
-   - User prompt (full text)
-   - Total prompt length
-   - Document count included in context
-
-5. **API Requests**
-   - Full request payload sent to the proxy
-   - Model parameters (temperature, max tokens, etc.)
-   - Response data from OpenAI
-
-6. **Performance Metrics**
-   - Time taken for each operation
-   - Content summarization metrics (if enabled)
-   - Compression ratios
-
-### Example Log Output
-
-```
-[AI Search] Starting document content retrieval for query: "how to install"
-[AI Search] Query: "how to install"
-  Number of search results: 5
-  Search results: [
-    { index: 0, url: '/docs/installation', title: 'Installation Guide', snippet: 'Install the package using npm...' },
-    ...
-  ]
-[AI Search] Processing top 5 search results
-[AI Search] Fetching document content from: /docs/installation
-[AI Search] Content Retrieval: /docs/installation
-  Success: true
-  Content length: 2456
-  Content preview: # Installation Guide\n\nTo install the package...
-[AI Search] Performance - fetchDocumentContent(/docs/installation): 125ms
-[AI Search] RAG Content Preparation
-  Number of documents: 3
-  Document 1: { length: 2456, preview: '# Installation Guide...' }
-  ...
-[AI Search] Creating user prompt for query: "how to install"
-[AI Search] Generated user prompt
-  queryLength: 14
-  contextLength: 5234
-  totalPromptLength: 5248
-  documentCount: 3
-[AI Search] Creating chat completion through proxy
-  model: gpt-4
-  messageCount: 2
-  maxTokens: 10000
-  temperature: 0.3
-[AI Search] API Request to https://your-backend-url.com/api/chat/completions
-  Payload: { model: 'gpt-4', messages: [...], max_tokens: 10000, temperature: 0.3 }
-[AI Search] API Response
-  Response: { choices: [...], usage: { total_tokens: 1234 } }
-  Generated answer length: 856
-[AI Search] Performance - Proxy request to /api/chat/completions: 2341ms
-```
-
-### Using Logs for Optimization
-
-The detailed logs can help you:
-
-1. **Identify Content Retrieval Issues**
-   - See which documents fail to load
-   - Understand why certain content isn't being included
-   - Debug URL routing problems
-
-2. **Optimize Prompt Size**
-   - Monitor total prompt lengths
-   - Adjust `maxDocuments` if prompts are too large
-   - Fine-tune content summarization settings
-
-3. **Improve Response Quality**
-   - See exactly what content the AI receives
-   - Identify missing or incomplete documentation
-   - Adjust system prompts based on actual usage
-
-4. **Performance Tuning**
-   - Identify slow operations
-   - Optimize content retrieval strategies
-   - Consider enabling content summarization for large documents
+1. **Search Steps**: Each phase of the search process
+2. **Keywords**: What keywords the backend generated
+3. **Document Retrieval**: Which documents were found
+4. **API Calls**: When requests are made to the backend
 
 ### Production Considerations
 
-Remember to disable logging in production (`enableLogging: false`) as it:
-- Generates significant console output
-- May impact performance slightly
-- Could expose sensitive information in browser console
-
-Use logging primarily during development and testing phases.
-
-## Utility Functions
-
-### trackAIQuery
-
-```typescript
-function trackAIQuery(query: string, success: boolean = true): void
-```
-
-Tracks AI queries for analytics purposes. By default, this logs to the console and sends a Google Analytics event if available.
-
-Parameters:
-- `query`: The search query string
-- `success`: Whether the query was successful (default: `true`)
+Remember to disable logging in production (`enableLogging: false`) as it generates console output.
 
 ## Security Considerations
 
-### Backend Proxy Security Features
+### Backend Service Security Features
 
-The backend proxy provides comprehensive security features:
-- **Domain-based access control**: Only whitelisted domains can access the proxy
+The backend service provides comprehensive security features:
+- **Domain-based access control**: Only whitelisted domains can access the service
 - **Rate limiting**: Configurable per IP/user to prevent abuse
 - **Request validation**: All requests are validated and sanitized
 - **Secure error handling**: No sensitive data in error messages
-- **Optional Redis caching**: Reduces API calls and improves performance
+- **API key security**: OpenAI API keys are never exposed to the frontend
 - **Comprehensive logging**: For security auditing and monitoring
 
 ### Best Practices
 
-1. **Domain Whitelisting**: Configure `ALLOWED_DOMAINS` in your proxy to only accept requests from your documentation site
-2. **HTTPS Only**: Always use HTTPS for both your documentation site and proxy service
-3. **Monitor Usage**: Set up logging and monitoring on your proxy to track usage and detect anomalies
+1. **Domain Whitelisting**: Configure `ALLOWED_DOMAINS` in your backend to only accept requests from your documentation site
+2. **HTTPS Only**: Always use HTTPS for both your documentation site and backend service
+3. **Monitor Usage**: Set up logging and monitoring on your backend to track usage and detect anomalies
 4. **Rate Limiting**: Configure appropriate rate limits based on your expected usage
-5. **Regular Updates**: Keep your proxy dependencies up to date
+5. **Regular Updates**: Keep your backend dependencies up to date
 
 ### Additional Recommendations
 
@@ -688,31 +348,32 @@ The backend proxy provides comprehensive security features:
 
 ## Troubleshooting
 
-### Proxy Connection Issues
+### Backend Connection Issues
 
-If you encounter issues connecting to the proxy:
+If you encounter issues connecting to the backend:
 
-1. Verify that your proxy URL is correct in the configuration
-2. Check that the proxy service is running and accessible
-3. Ensure your domain is whitelisted in the proxy's `ALLOWED_DOMAINS` configuration
-4. Check the proxy logs for any error messages
+1. Verify that your backend URL is correct in the configuration
+2. Check that the backend service is running and accessible
+3. Ensure your domain is whitelisted in the backend's `ALLOWED_DOMAINS` configuration
+4. Check the backend logs for any error messages
 
-### Document Content Retrieval Issues
+### Search Issues
 
-If the AI cannot retrieve document content:
+If search is not working as expected:
 
-1. Ensure your documentation pages follow standard Docusaurus HTML structure
-2. Check that the server allows the browser to fetch documentation pages via JavaScript
-3. Try enabling the `highlightCode` option if code blocks are important to your documentation
+1. Ensure your Algolia configuration is correct
+2. Check that the backend is returning keywords properly
+3. Verify that documents are being retrieved from Algolia
+4. Enable logging to see the search flow
 
 ### CORS Errors
 
 If you see CORS errors:
 
-1. Verify your domain is in the proxy's `ALLOWED_DOMAINS` environment variable
+1. Verify your domain is in the backend's `ALLOWED_DOMAINS` environment variable
 2. Check for protocol mismatch (http vs https)
 3. Ensure no trailing slashes in domain configuration
-4. Check that the proxy's CORS configuration is correct
+4. Check that the backend's CORS configuration is correct
 
 ## License
 
@@ -720,169 +381,4 @@ MIT
 
 ## Credits
 
-Built on top of Docusaurus and Algolia DocSearch.
-
-## What's New: Intelligent Search
-
-The latest version introduces Perplexity-style intelligent search that:
-- **Understands Intent**: Analyzes your query to understand what you're really looking for
-- **Multi-Step Search**: Performs multiple targeted searches based on query analysis
-- **Sitemap Integration**: Uses your site's structure to discover related content
-- **Progress Updates**: Shows real-time progress as it searches and analyzes
-- **Smart Ranking**: Ranks results by relevance to your specific question
-
-## Intelligent Search Mode
-
-When `intelligentSearch` is enabled (default), the search process works as follows:
-
-1. **Query Analysis**: AI analyzes your query to understand the intent (how-to, troubleshooting, API reference, etc.)
-2. **Multi-faceted Search**: Generates multiple search queries based on the analysis
-3. **Sitemap Discovery**: Uses your site's sitemap to find related documentation
-4. **Content Ranking**: Scores and ranks documents by relevance
-5. **Answer Generation**: Creates a comprehensive answer from the most relevant sources
-
-### Progress Indicators
-
-During intelligent search, users see real-time progress updates:
-- "Understanding your question..." - Analyzing query intent
-- "Loading documentation structure..." - Processing sitemap
-- "Searching documentation..." - Running searches
-- "Finding related documentation..." - Discovering additional content
-- "Retrieving documentation content..." - Fetching page content
-- "Generating AI response..." - Creating the final answer
-
-### Configuration Example
-
-```jsx
-const aiConfig = {
-  openAI: {
-    proxyUrl: "https://your-backend-url.com",
-    model: "gpt-4",
-    maxTokens: 10000,
-    temperature: 0.3,
-  },
-  // Enable intelligent search (default: true)
-  intelligentSearch: true,
-  prompts: {
-    siteName: "Your Documentation",
-    maxDocuments: 10, // Analyze up to 10 documents
-  },
-  ui: {
-    aiButtonText: "Ask AI",
-    modalTitle: "AI Assistant",
-  },
-};
-```
-
-### Disabling Intelligent Search
-
-If you prefer the simpler, faster search that relies solely on Algolia results:
-
-```jsx
-const aiConfig = {
-  // ... other config
-  intelligentSearch: false, // Use simple Algolia-based search
-};
-```
-
-## Configuration
-
-The plugin uses a comprehensive default configuration system. All configuration values have sensible defaults, so you only need to specify what you want to override.
-
-### Default Configuration
-
-The plugin includes built-in defaults for all configuration options. You can import and reference these defaults if needed:
-
-```jsx
-import { DEFAULT_CONFIG } from 'docusaurus-openai-search';
-
-// View default values
-console.log(DEFAULT_CONFIG);
-```
-
-Default values include:
-- **OpenAI Model**: `gpt-4` for main queries, `gpt-3.5-turbo` for query analysis
-- **Temperature**: `0.5` for main queries, `0.3` for query analysis
-- **Max Tokens**: `2000` for main queries, `500` for query analysis
-- **Intelligent Search**: Enabled by default
-- **Max Documents**: 10 for intelligent search, 5 for simple search
-
-### Minimal Configuration
-
-The only required configuration is the proxy URL:
-
-```jsx
-const aiConfig = {
-  openAI: {
-    proxyUrl: "https://your-backend-url.com", // Only required field
-  },
-};
-```
-
-All other values will use sensible defaults.
-
-### Full Configuration Example
-
-Here's a complete example showing all available options:
-
-```jsx
-const aiConfig = {
-  // OpenAI API settings
-  openAI: {
-    proxyUrl: "https://your-backend-url.com", // Required
-    model: "gpt-4",                          // Default: gpt-4
-    maxTokens: 10000,                        // Default: 2000
-    temperature: 0.3,                        // Default: 0.5
-  },
-  
-  // Enable/disable features
-  intelligentSearch: true,                   // Default: true
-  enabled: true,                            // Default: true
-  enableLogging: false,                     // Default: false
-  
-  // UI customization
-  ui: {
-    aiButtonText: "Ask AI about \"{query}\"",         // Default includes {query} placeholder
-    aiButtonAriaLabel: "Ask AI about this question",  // Default
-    modalTitle: "AI Answer",                          // Default
-    loadingText: "Generating answer based on documentation...", // Default
-    errorText: "Unable to generate an answer. Please try again later.", // Default
-    retryButtonText: "Retry Query",                   // Default
-    footerText: "Powered by AI • Using content from documentation", // Default
-    retrievingText: "Retrieving document content...", // Default
-    generatingText: "Generating AI response...",      // Default
-  },
-  
-  // Prompt customization
-  prompts: {
-    siteName: "Your Documentation",          // Default: "this documentation"
-    maxDocuments: 10,                        // Default: 10 for intelligent search, 5 for simple
-    highlightCode: false,                    // Default: false
-    includeLlmsFile: true,                   // Default: true
-    useSummarization: false,                 // Default: false
-    systemPrompt: undefined,                 // Default: built-in prompt
-    userPrompt: undefined,                   // Default: built-in prompt
-  },
-  
-  // Event callbacks
-  onAIQuery: (query, success) => {
-    console.log(`AI query: ${query}, success: ${success}`);
-  },
-};
-```
-
-### Accessing Configuration Constants
-
-The plugin exports several configuration constants that you can use:
-
-```jsx
-import { 
-  DEFAULT_CONFIG,
-  QUERY_ANALYSIS_SYSTEM_PROMPT,
-  COMMON_DOC_PATTERNS,
-  SITEMAP_PATTERNS 
-} from 'docusaurus-openai-search';
-
-// Use or extend default patterns
-const myDocPatterns = [...COMMON_DOC_PATTERNS, '/my-custom-docs'];
-```
+Built on top of Docusaurus and Algolia DocSearch. 

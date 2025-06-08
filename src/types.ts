@@ -1,31 +1,21 @@
 import { InternalDocSearchHit } from '@docsearch/react';
 
 /**
- * Prompt customization options
+ * Context options to send to backend
  */
-export interface PromptOptions {
-  /** Custom system prompt template to replace the default one */
-  systemPrompt?: string;
-  /** Name of your site or product to use in default prompts */
+export interface ContextOptions {
+  /** Name of your site or product */
   siteName?: string;
   /** Additional context about your product/service to help AI understand queries better */
   systemContext?: string;
-  /** Max number of documents to include in context */
-  maxDocuments?: number;
 }
 
 /**
- * OpenAI API options
+ * Backend configuration
  */
-export interface OpenAIOptions {
-  /** Proxy URL - backend proxy service URL for secure API calls */
-  proxyUrl: string;
-  /** Model to use for AI search queries, defaults to gpt-4 */
-  model?: string;
-  /** Maximum tokens to use in AI requests */
-  maxTokens?: number;
-  /** Temperature for AI responses (0-1), lower is more deterministic */
-  temperature?: number;
+export interface BackendOptions {
+  /** URL of your backend service that handles AI operations */
+  url: string;
 }
 
 /**
@@ -46,28 +36,19 @@ export interface UIOptions {
  * Docusaurus AI Search configuration
  */
 export interface DocusaurusAISearchConfig {
-  /** OpenAI API settings */
-  openAI: {
-    /** URL of your backend proxy service */
-    proxyUrl: string;
-    /** Model to use for AI search queries */
-    model?: string;
-    /** Maximum tokens to use in AI requests */
-    maxTokens?: number;
-    /** Temperature for AI responses (0-1) */
-    temperature?: number;
-  };
+  /** Backend service configuration */
+  backend: BackendOptions;
   
   /** UI customization options */
   ui?: UIOptions;
   
-  /** Prompt customization options */
-  prompts?: PromptOptions;
+  /** Context to send to backend */
+  context?: ContextOptions;
   
   /** Enable or disable AI search features */
   enabled?: boolean;
   
-  /** Maximum number of search queries to perform (default: 3) */
+  /** Maximum number of search queries to request from backend (default: 5) */
   maxSearchQueries?: number;
   
   /** Enable response caching (default: true) */

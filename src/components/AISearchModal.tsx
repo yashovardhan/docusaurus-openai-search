@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { AISearchModalProps } from '../types';
 import {
-  createSystemPrompt,
-  createUserPrompt,
-  createProxyChatCompletion,
   createLogger,
   SearchOrchestrator,
   ResponseCache,
@@ -105,8 +102,8 @@ export function AISearchModal({
     createLogger(config?.enableLogging || false);
   }, [config?.enableLogging]);
 
-  // Get the proxy URL from config
-  const proxyUrl = config?.openAI?.proxyUrl;
+  // Get the backend URL from config
+  const backendUrl = config?.backend?.url;
 
   // Get Prism theme for code highlighting
   const getPrismTheme = (): PrismTheme => {
@@ -164,13 +161,13 @@ export function AISearchModal({
 
   // Initialize search orchestrator
   useEffect(() => {
-    if (proxyUrl && config) {
+    if (backendUrl && config) {
       orchestratorRef.current = new SearchOrchestrator(
         config,
         (step) => setSearchStep(step)
       );
     }
-  }, [proxyUrl, config]);
+  }, [backendUrl, config]);
 
   // First, retrieve document content using intelligent search
   useEffect(() => {
@@ -217,35 +214,32 @@ export function AISearchModal({
           }
         }
 
-        // Use intelligent search if enabled
+        // Use AI search with the new orchestrator
         if (orchestratorRef.current && algoliaConfig) {
-          const documents = await orchestratorRef.current.performIntelligentSearch(
+          const result = await orchestratorRef.current.performAISearch(
             query,
             algoliaConfig.searchClient,
-            algoliaConfig.indexName,
-            config?.prompts?.maxDocuments || DEFAULT_CONFIG.prompts.maxDocuments
+            algoliaConfig.indexName
           );
 
-          if (documents.length === 0) {
+          if (result.documents.length === 0) {
             throw new Error('Could not find any relevant documentation for your query');
           }
 
-          setRetrievedContent(documents);
+          setRetrievedContent(result.documents);
+          setAnswer(result.answer);
           
-          // Extract query analysis and AI call count from the orchestrator
-          const searchContext = (orchestratorRef.current as any).context;
-          if (searchContext?.queryAnalysisResult) {
-            setQueryAnalysis(searchContext.queryAnalysisResult);
-          }
-          if (searchContext?.aiCallCount) {
-            setAiCallCount(searchContext.aiCallCount);
+          // Cache the complete response if caching is enabled
+          if (enableCaching) {
+            cache.set(query, result.answer, '', result.documents);
           }
           
-          setSearchStep({
-            step: 'synthesizing',
-            message: `Found ${documents.length} relevant documents`,
-            progress: 95
-          });
+          // Track successful AI query
+          if (config?.onAIQuery) {
+            config.onAIQuery(query, true);
+          }
+          
+          setLoading(false);
         } else {
           // Fallback to original search behavior
           if (searchResults.length === 0) {
@@ -253,13 +247,13 @@ export function AISearchModal({
           }
 
           setSearchStep({
-            step: 'retrieving',
+            step: 'documents-found',
             message: modalTexts.retrievingText,
             progress: 50
           });
 
           // Simple content extraction from search results
-          const maxDocs = config?.prompts?.maxDocuments || 5;
+          const maxDocs = 5; // Backend will handle the actual document limit
           const documents: DocumentContent[] = searchResults.slice(0, maxDocs).map((result) => {
             let content = '';
             
@@ -299,134 +293,24 @@ export function AISearchModal({
           `Unable to find relevant documentation: ${err.message || 'Unknown error'}. Please try a different search query.`
         );
         setLoading(false);
+        
+        // Track failed AI query if function is provided
+        if (config?.onAIQuery) {
+          config.onAIQuery(query, false);
+        }
       }
     }
 
     fetchContent();
   }, [query, searchResults.length, algoliaConfig?.indexName]); // Minimal dependencies
 
-  // Then, generate answer based on retrieved content
-  useEffect(() => {
-    async function fetchAnswer() {
-      if (!query || !proxyUrl) {
-        setLoading(false);
-        return;
-      }
-
-      // If no content was retrieved, we've already set the error in the first useEffect
-      if (retrievedContent.length === 0) {
-        setLoading(false);
-        return;
-      }
-      
-      // Skip if we already have a cached answer
-      if (isFromCache && answer) {
-        setLoading(false);
-        return;
-      }
-
-      // Skip if we already have an answer
-      if (answer) {
-        setLoading(false);
-        return;
-      }
-
-      // Prevent duplicate AI calls using ref
-      if (answerGenerationStartedRef.current || isGeneratingAnswer) {
-        return;
-      }
-
-      try {
-        answerGenerationStartedRef.current = true;
-        setIsGeneratingAnswer(true);
-        setLoading(true);
-        setError(null);
-        setSearchStep({
-          step: 'synthesizing',
-          message: modalTexts.generatingText,
-          progress: 100
-        });
-
-        // Create system and user prompts using config options
-        const systemPrompt = createSystemPrompt(
-          config?.prompts?.siteName || 'this documentation'
-        );
-        
-        // Convert DocumentContent to string array for existing prompt function
-        const processedContent = retrievedContent.map(doc => 
-          `${doc.title}\nURL: ${doc.url}\n\n${doc.content}`
-        );
-        
-        const userPrompt = createUserPrompt(
-          query, 
-          processedContent, 
-          searchResults
-        );
-
-        // Use proxy for chat completion
-        const response = await createProxyChatCompletion(
-          proxyUrl,
-          [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: userPrompt,
-            },
-          ],
-          {
-            model: config?.openAI?.model || DEFAULT_CONFIG.openAI.model,
-            maxTokens: config?.openAI?.maxTokens || DEFAULT_CONFIG.openAI.maxTokens,
-            temperature: config?.openAI?.temperature || DEFAULT_CONFIG.openAI.temperature,
-          }
-        );
-
-        const generatedAnswer = response.choices[0]?.message?.content;
-        
-        // Increment AI call count for synthesis
-        setAiCallCount(prev => prev + 1);
-        
-        const finalAnswer = generatedAnswer ||
-          "Sorry, I couldn't find relevant information in our documentation to answer your question.";
-        
-        setAnswer(finalAnswer);
-        
-        // Cache the complete response if caching is enabled
-        const enableCaching = config?.enableCaching ?? DEFAULT_CONFIG.enableCaching;
-        if (enableCaching) {
-          cache.set(query, finalAnswer, queryAnalysis, retrievedContent);
-        }
-        
-        // Track successful AI query if function is provided
-        if (config?.onAIQuery) {
-          config.onAIQuery(query, true);
-        }
-      } catch (err: any) {
-        setError(err?.message || 'Failed to generate an answer. Please try again later.');
-        
-        // Track failed AI query if function is provided
-        if (config?.onAIQuery) {
-          config.onAIQuery(query, false);
-        }
-      } finally {
-        setLoading(false);
-        setSearchStep(null);
-        setIsGeneratingAnswer(false);
-      }
-    }
-
-    fetchAnswer();
-  }, [query, retrievedContent.length, proxyUrl]); // Simplified dependencies to prevent re-renders
-
   // Effect to handle markdown response
   useEffect(() => {
     if (answer) {
       let markdownContent = answer;
 
-      // Add source references if using intelligent search
-      if (orchestratorRef.current && retrievedContent.length > 0) {
+      // Add source references if we have retrieved content
+      if (retrievedContent.length > 0) {
         const sourcesMarkdown = `
 
 ---
@@ -518,6 +402,44 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
                       />
                     </div>
                     <div className="ai-step-message">{searchStep.message}</div>
+                    
+                    {/* Display detailed progress information */}
+                    {searchStep.details && (
+                      <div className="ai-progress-details">
+                        {searchStep.details.keywords && searchStep.details.keywords.length > 0 && (
+                          <div className="ai-keywords-section">
+                            <strong>Search keywords:</strong>
+                            <ul className="ai-keywords-list">
+                              {searchStep.details.keywords.map((keyword, idx) => (
+                                <li key={idx} className="ai-keyword-item">{keyword}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {searchStep.details.documentsFound !== undefined && searchStep.details.documentsFound > 0 && (
+                          <div className="ai-documents-section">
+                            <strong>Documents found: {searchStep.details.documentsFound}</strong>
+                            {searchStep.details.documentLinks && searchStep.details.documentLinks.length > 0 && (
+                              <ul className="ai-document-links">
+                                {searchStep.details.documentLinks.slice(0, 5).map((link, idx) => (
+                                  <li key={idx} className="ai-document-link-item">
+                                    <a href={link} target="_blank" rel="noopener noreferrer">
+                                      {link.split('/').pop() || 'Document'}
+                                    </a>
+                                  </li>
+                                ))}
+                                {searchStep.details.documentLinks.length > 5 && (
+                                  <li className="ai-document-link-more">
+                                    ...and {searchStep.details.documentLinks.length - 5} more
+                                  </li>
+                                )}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p>{modalTexts.loadingText}</p>
