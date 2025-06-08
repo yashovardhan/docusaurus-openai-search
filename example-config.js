@@ -18,6 +18,51 @@ module.exports = {
     
     // Footer text in the modal
     footerText: 'Powered by AI',
+    
+    // Loading/Progress messages
+    loadingText: 'Generating answer based on documentation...',
+    retrievingText: 'Retrieving document content...',
+    generatingText: 'Generating AI response...',
+    
+    // Button labels
+    retryButtonText: 'Retry Query',
+    closeButtonAriaLabel: 'Close AI answer modal',
+    aiButtonAriaLabel: 'Ask AI about this question',
+    
+    // Question display
+    questionPrefix: 'Q:',
+    
+    // Search progress labels
+    searchKeywordsLabel: 'Search keywords:',
+    documentsFoundLabel: 'Documents found: {count}',
+    documentsMoreText: '...and {count} more',
+    
+    // Sources section
+    sourcesHeaderText: 'Sources:',
+    
+    // Error state messages
+    searchLinksHelpText: 'You might find these search results helpful:',
+    noDocumentsFoundError: 'Could not find any relevant documentation for your query',
+    noSearchResultsError: 'No search results available to retrieve content from',
+    
+    // Footer indicators
+    cachedResponseText: 'Retrieved from cache',
+    documentsAnalyzedText: '{count} documents analyzed',
+    searchResultsOnlyText: '(search results only)',
+    
+    // Search results link
+    seeAllResultsText: 'See all {count} results',
+    
+    // Search button customization
+    searchButtonText: 'Search',
+    searchButtonAriaLabel: 'Search documentation',
+    searchInputPlaceholder: 'Search docs',
+    searchButtonClassName: 'custom-search-button',
+    showSearchButtonShortcut: true,
+    
+    // Use custom search button for complete control over button rendering
+    // Set to true if the default button text/styling doesn't update properly
+    useCustomSearchButton: false,
   },
   
   // Optional: Context to send to backend

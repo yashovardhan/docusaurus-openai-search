@@ -144,10 +144,12 @@ function useSearchParameters({
 
 function ResultsFooter({ 
   state, 
-  onClose 
+  onClose,
+  seeAllResultsText
 }: { 
   state: any; 
   onClose: () => void; 
+  seeAllResultsText?: string;
 }) {
   const createSearchLink = useSearchLinkCreator();
   
@@ -159,12 +161,16 @@ function ResultsFooter({
           onClick={onClose} 
           className="ai-search-see-all"
         >
-          <Translate 
-            id="theme.SearchBar.seeAll" 
-            values={{ count: state.context.nbHits }}
-          >
-            {'See all {count} results'}
-          </Translate>
+          {seeAllResultsText ? (
+            seeAllResultsText.replace('{count}', state.context.nbHits)
+          ) : (
+            <Translate 
+              id="theme.SearchBar.seeAll" 
+              values={{ count: state.context.nbHits }}
+            >
+              {'See all {count} results'}
+            </Translate>
+          )}
         </Link>
       </div>
     </div>
@@ -209,6 +215,22 @@ export function DocusaurusAISearch({
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
   const [searchResults, setSearchResults] = useState<InternalDocSearchHit[]>([]);
+  
+  // Merge button translations with AI config
+  const buttonTranslations = useMemo(() => {
+    const aiButtonText = aiConfig?.ui?.searchButtonText;
+    const aiButtonAriaLabel = aiConfig?.ui?.searchButtonAriaLabel;
+    
+    return {
+      buttonText: aiButtonText || translations?.button?.buttonText || defaultTranslations.button.buttonText,
+      buttonAriaLabel: aiButtonAriaLabel || translations?.button?.buttonAriaLabel || defaultTranslations.button.buttonAriaLabel,
+    };
+  }, [aiConfig?.ui, translations?.button]);
+  
+  // Get search input placeholder
+  const searchPlaceholder = useMemo(() => {
+    return aiConfig?.ui?.searchInputPlaceholder || placeholder || 'Search docs';
+  }, [aiConfig?.ui?.searchInputPlaceholder, placeholder]);
   
   // Create Algolia search client
   const searchClient = useMemo(
@@ -268,8 +290,12 @@ export function DocusaurusAISearch({
   );
   
   const resultsFooterComponent = useCallback(
-    ({ state }: { state: any }) => <ResultsFooter state={state} onClose={closeModal} />,
-    [closeModal],
+    ({ state }: { state: any }) => <ResultsFooter 
+      state={state} 
+      onClose={closeModal} 
+      seeAllResultsText={aiConfig?.ui?.seeAllResultsText}
+    />,
+    [closeModal, aiConfig?.ui?.seeAllResultsText],
   );
   
   useDocSearchKeyboardEvents({
@@ -285,6 +311,11 @@ export function DocusaurusAISearch({
       const timer = setTimeout(() => {
         const searchInput = document.querySelector('.DocSearch-Input') as HTMLInputElement;
         const searchDropdown = document.querySelector('.DocSearch-Dropdown') as HTMLElement;
+        
+        // Update search input placeholder if custom text is provided
+        if (searchInput && aiConfig?.ui?.searchInputPlaceholder) {
+          searchInput.placeholder = aiConfig.ui.searchInputPlaceholder;
+        }
         
         if (searchInput && searchDropdown) {
           let aiButtonAdded = false;
@@ -304,7 +335,7 @@ export function DocusaurusAISearch({
             
             const buttonText = aiConfig?.ui?.aiButtonText?.replace('{query}', query) || 
                              DEFAULT_CONFIG.ui.aiButtonText.replace('{query}', query);
-            const buttonAriaLabel = 'Ask AI about this question';
+            const buttonAriaLabel = aiConfig?.ui?.aiButtonAriaLabel || DEFAULT_CONFIG.ui.aiButtonAriaLabel;
             
             aiButton.innerHTML = `
               <button class="ai-search-button-header" aria-label="${buttonAriaLabel}">
@@ -481,18 +512,88 @@ export function DocusaurusAISearch({
     }
   }, [appId]);
   
+  // Apply custom button styling and keyboard shortcut visibility
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      // Small delay to ensure button is rendered
+      const timer = setTimeout(() => {
+        const searchButton = searchButtonRef.current;
+        
+        if (searchButton) {
+          // Update button text if custom text is provided
+          if (aiConfig?.ui?.searchButtonText) {
+            const placeholderElement = searchButton.querySelector('.DocSearch-Button-Placeholder');
+            if (placeholderElement) {
+              placeholderElement.textContent = aiConfig.ui.searchButtonText;
+            }
+          }
+          
+          // Add custom class name if provided
+          if (aiConfig?.ui?.searchButtonClassName) {
+            searchButton.classList.add(aiConfig.ui.searchButtonClassName);
+          }
+          
+          // Handle keyboard shortcut visibility
+          if (aiConfig?.ui?.showSearchButtonShortcut === false) {
+            // Hide the keyboard shortcut hint
+            const shortcutElement = searchButton.querySelector('.DocSearch-Button-Keys');
+            if (shortcutElement) {
+              (shortcutElement as HTMLElement).style.display = 'none';
+            }
+          }
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [aiConfig?.ui?.searchButtonText, aiConfig?.ui?.searchButtonClassName, aiConfig?.ui?.showSearchButtonShortcut]);
+  
   return (
     <div className="docusaurus-openai-search">
-      <DocSearchButton
-        onTouchStart={importDocSearchModalIfNeeded}
-        onFocus={importDocSearchModalIfNeeded}
-        onMouseOver={importDocSearchModalIfNeeded}
-        onClick={openModal}
-        ref={searchButtonRef}
-        translations={
-          translations?.button ?? defaultTranslations.button
-        }
-      />
+      {aiConfig?.ui?.useCustomSearchButton ? (
+        <button
+          ref={searchButtonRef}
+          onClick={openModal}
+          onMouseOver={importDocSearchModalIfNeeded}
+          onFocus={importDocSearchModalIfNeeded}
+          onTouchStart={importDocSearchModalIfNeeded}
+          className={`DocSearch DocSearch-Button ${aiConfig?.ui?.searchButtonClassName || ''}`}
+          aria-label={buttonTranslations.buttonAriaLabel}
+        >
+          <span className="DocSearch-Button-Container">
+            <svg className="DocSearch-Search-Icon" width="20" height="20" viewBox="0 0 20 20">
+              <path
+                d="M14.386 14.386l4.0877 4.0877-4.0877-4.0877c-2.9418 2.9419-7.7115 2.9419-10.6533 0-2.9419-2.9418-2.9419-7.7115 0-10.6533 2.9418-2.9419 7.7115-2.9419 10.6533 0 2.9419 2.9418 2.9419 7.7115 0 10.6533z"
+                stroke="currentColor"
+                fill="none"
+                fillRule="evenodd"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="DocSearch-Button-Placeholder">
+              {aiConfig?.ui?.searchButtonText || 'Search'}
+            </span>
+          </span>
+          {aiConfig?.ui?.showSearchButtonShortcut !== false && (
+            <span className="DocSearch-Button-Keys">
+              <kbd className="DocSearch-Button-Key">
+                {typeof window !== 'undefined' && window.navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}
+              </kbd>
+              <kbd className="DocSearch-Button-Key">K</kbd>
+            </span>
+          )}
+        </button>
+      ) : (
+        <DocSearchButton
+          onTouchStart={importDocSearchModalIfNeeded}
+          onFocus={importDocSearchModalIfNeeded}
+          onMouseOver={importDocSearchModalIfNeeded}
+          onClick={openModal}
+          ref={searchButtonRef}
+          translations={buttonTranslations}
+        />
+      )}
       
       {isOpen && DocSearchModal && searchContainer.current && createPortal(
         <DocSearchModal
@@ -508,7 +609,7 @@ export function DocusaurusAISearch({
           {...(searchPagePath && {
             resultsFooterComponent,
           })}
-          placeholder={placeholder}
+          placeholder={searchPlaceholder}
           translations={translations?.modal ?? defaultTranslations.modal}
           searchParameters={computedSearchParameters}
           indexName={indexName}

@@ -30,6 +30,55 @@ export interface UIOptions {
   errorText?: string;
   /** Footer text in the AI modal */
   footerText?: string;
+  /** Text for loading/generating answer */
+  loadingText?: string;
+  /** Text for retry button */
+  retryButtonText?: string;
+  /** Prefix for the question display (default: "Q:") */
+  questionPrefix?: string;
+  /** Label for search keywords section */
+  searchKeywordsLabel?: string;
+  /** Label for documents found section */
+  documentsFoundLabel?: string;
+  /** Text for "and X more" when showing limited documents */
+  documentsMoreText?: string;
+  /** Header text for sources section */
+  sourcesHeaderText?: string;
+  /** Text shown above search links on error */
+  searchLinksHelpText?: string;
+  /** Text for "See all X results" link */
+  seeAllResultsText?: string;
+  /** Close button aria label */
+  closeButtonAriaLabel?: string;
+  /** Text shown when retrieving documents */
+  retrievingText?: string;
+  /** Text shown when generating AI response */
+  generatingText?: string;
+  /** Text appended when response is from cache */
+  cachedResponseText?: string;
+  /** Text pattern for document analysis count (use {count} as placeholder) */
+  documentsAnalyzedText?: string;
+  /** Text shown when only search results are available */
+  searchResultsOnlyText?: string;
+  /** Aria label for the AI button in search */
+  aiButtonAriaLabel?: string;
+  /** Text for no documents found error */
+  noDocumentsFoundError?: string;
+  /** Text for no search results error */
+  noSearchResultsError?: string;
+  // Search button customization
+  /** Text for the search button */
+  searchButtonText?: string;
+  /** Aria label for the search button */
+  searchButtonAriaLabel?: string;
+  /** Placeholder text for the search input */
+  searchInputPlaceholder?: string;
+  /** Custom class name for the search button */
+  searchButtonClassName?: string;
+  /** Show/hide the keyboard shortcut hint (Cmd/Ctrl+K) */
+  showSearchButtonShortcut?: boolean;
+  /** Use a custom search button instead of the default DocSearch button */
+  useCustomSearchButton?: boolean;
 }
 
 /**

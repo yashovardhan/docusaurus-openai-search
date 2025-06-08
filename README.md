@@ -110,6 +110,18 @@ export default function SearchBar() {
       aiButtonText: "Ask AI",
       modalTitle: "AI Assistant",
       footerText: "Powered by AI",
+      loadingText: "Searching documentation...",
+      retryButtonText: "Try Again",
+      questionPrefix: "Your Question:",
+      sourcesHeaderText: "References:",
+      seeAllResultsText: "View all {count} results",
+      // Search button customization
+      searchButtonText: "Search docs",
+      searchButtonAriaLabel: "Search documentation",
+      searchInputPlaceholder: "What are you looking for?",
+      showSearchButtonShortcut: true,
+      // Set to true if button text doesn't update properly
+      useCustomSearchButton: false,
     },
     // Context to send to backend
     context: {
@@ -188,6 +200,30 @@ The `ui` object customizes the appearance and text of UI elements:
 | `modalTitle` | string | No | Title of the AI modal (default: `AI Answer`) |
 | `errorText` | string | No | Error text when AI generation fails (default: `Unable to generate an answer. Please try again later.`) |
 | `footerText` | string | No | Footer text in the AI modal (default: `Powered by AI`) |
+| `loadingText` | string | No | Text for loading/generating answer (default: `Generating answer based on documentation...`) |
+| `retryButtonText` | string | No | Text for retry button (default: `Retry Query`) |
+| `questionPrefix` | string | No | Prefix for the question display (default: `Q:`) |
+| `searchKeywordsLabel` | string | No | Label for search keywords section (default: `Search keywords:`) |
+| `documentsFoundLabel` | string | No | Label for documents found section (default: `Documents found: {count}`) |
+| `documentsMoreText` | string | No | Text for "and X more" when showing limited documents (default: `...and {count} more`) |
+| `sourcesHeaderText` | string | No | Header text for sources section (default: `Sources:`) |
+| `searchLinksHelpText` | string | No | Text shown above search links on error (default: `You might find these search results helpful:`) |
+| `seeAllResultsText` | string | No | Text for "See all X results" link (default: `See all {count} results`) |
+| `closeButtonAriaLabel` | string | No | Close button aria label (default: `Close AI answer modal`) |
+| `retrievingText` | string | No | Text shown when retrieving documents (default: `Retrieving document content...`) |
+| `generatingText` | string | No | Text shown when generating AI response (default: `Generating AI response...`) |
+| `cachedResponseText` | string | No | Text appended when response is from cache (default: `Retrieved from cache`) |
+| `documentsAnalyzedText` | string | No | Text pattern for document analysis count (default: `{count} documents analyzed`) |
+| `searchResultsOnlyText` | string | No | Text shown when only search results are available (default: `(search results only)`) |
+| `aiButtonAriaLabel` | string | No | Aria label for the AI button in search (default: `Ask AI about this question`) |
+| `noDocumentsFoundError` | string | No | Text for no documents found error (default: `Could not find any relevant documentation for your query`) |
+| `noSearchResultsError` | string | No | Text for no search results error (default: `No search results available to retrieve content from`) |
+| `searchButtonText` | string | No | Text for the search button in the top bar (default: `Search`) |
+| `searchButtonAriaLabel` | string | No | Aria label for the search button (default: `Search`) |
+| `searchInputPlaceholder` | string | No | Placeholder text for the search input (default: `Search docs`) |
+| `searchButtonClassName` | string | No | Custom CSS class name for the search button |
+| `showSearchButtonShortcut` | boolean | No | Show/hide the keyboard shortcut hint (Cmd/Ctrl+K) (default: `true`) |
+| `useCustomSearchButton` | boolean | No | Use a custom search button for complete control over rendering (default: `false`) |
 
 ### Context Options
 
@@ -209,12 +245,63 @@ const aiConfig = {
     aiButtonText: "Ask AI",
     modalTitle: "AI Assistant",
     footerText: "Powered by AI",
+    loadingText: "Searching documentation...",
+    retryButtonText: "Try Again",
+    questionPrefix: "Your Question:",
+    sourcesHeaderText: "References:",
+    seeAllResultsText: "View all {count} results",
   },
   context: {
     siteName: "Your Site Name",
     systemContext: "This is documentation for [your product description]",
   },
   enableLogging: false,
+};
+```
+
+### Localization and Internationalization
+
+The extensive UI customization options make it easy to localize the AI search interface for different languages. Here's an example of Spanish localization:
+
+```jsx
+const aiConfig = {
+  backend: {
+    url: "https://your-backend-url.com",
+  },
+  ui: {
+    // Spanish localization
+    aiButtonText: "Preguntar a IA sobre \"{query}\"",
+    modalTitle: "Respuesta de IA",
+    errorText: "No se pudo generar una respuesta. Por favor, inténtalo más tarde.",
+    footerText: "Desarrollado con IA",
+    loadingText: "Generando respuesta basada en la documentación...",
+    retryButtonText: "Reintentar",
+    questionPrefix: "P:",
+    searchKeywordsLabel: "Palabras clave de búsqueda:",
+    documentsFoundLabel: "Documentos encontrados: {count}",
+    documentsMoreText: "...y {count} más",
+    sourcesHeaderText: "Fuentes:",
+    searchLinksHelpText: "Estos resultados de búsqueda pueden ser útiles:",
+    seeAllResultsText: "Ver los {count} resultados",
+    closeButtonAriaLabel: "Cerrar modal de respuesta IA",
+    retrievingText: "Recuperando contenido del documento...",
+    generatingText: "Generando respuesta de IA...",
+    cachedResponseText: "Recuperado de caché",
+    documentsAnalyzedText: "{count} documentos analizados",
+    searchResultsOnlyText: "(solo resultados de búsqueda)",
+    aiButtonAriaLabel: "Preguntar a IA sobre esta pregunta",
+    noDocumentsFoundError: "No se pudo encontrar documentación relevante para tu consulta",
+    noSearchResultsError: "No hay resultados de búsqueda disponibles para recuperar contenido",
+    
+    // Search button localization
+    searchButtonText: "Buscar",
+    searchButtonAriaLabel: "Buscar en la documentación",
+    searchInputPlaceholder: "¿Qué estás buscando?",
+  },
+  context: {
+    siteName: "Tu Sitio",
+    systemContext: "Esta es la documentación para...",
+  },
 };
 ```
 
@@ -284,6 +371,45 @@ Or if you prefer more spacious UI:
   --ai-search-unit-lg: 24px;
   --ai-search-unit-xl: 32px;
   --ai-search-unit-xxl: 48px;
+}
+```
+
+### Customizing Search Button Appearance
+
+You can use the `searchButtonClassName` option to add a custom CSS class to the search button and style it:
+
+```jsx
+const aiConfig = {
+  ui: {
+    searchButtonClassName: 'my-custom-search-button',
+  },
+};
+```
+
+Then style it in your CSS:
+
+```css
+/* Custom search button styling */
+.my-custom-search-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.my-custom-search-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Hide keyboard shortcut if needed */
+.my-custom-search-button .DocSearch-Button-Keys {
+  display: none;
+}
+
+/* Customize search button text color */
+.my-custom-search-button .DocSearch-Button-Placeholder {
+  color: white;
 }
 ```
 
@@ -374,6 +500,29 @@ If you see CORS errors:
 2. Check for protocol mismatch (http vs https)
 3. Ensure no trailing slashes in domain configuration
 4. Check that the backend's CORS configuration is correct
+
+### Search Button Customization Not Working
+
+If the search button text still shows "Search" and "Cmd K" despite your configuration:
+
+1. **Try using the custom search button option** (recommended):
+   ```jsx
+   const aiConfig = {
+     ui: {
+       searchButtonText: "Custom Search Text",
+       showSearchButtonShortcut: false,
+       useCustomSearchButton: true, // Enable custom button
+     },
+   };
+   ```
+
+2. **Clear your browser cache** - Sometimes cached JavaScript can prevent updates
+
+3. **Check the DOM timing** - The default DocSearch button may render after our customization runs
+
+4. **Verify your configuration** - Ensure the `aiConfig` is properly passed to the component
+
+The `useCustomSearchButton: true` option provides complete control over the search button rendering and ensures your customizations are applied correctly.
 
 ## License
 

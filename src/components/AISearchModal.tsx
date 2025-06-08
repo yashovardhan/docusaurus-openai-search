@@ -133,12 +133,24 @@ export function AISearchModal({
   // Default modal text overrides
   const modalTexts = {
     modalTitle: config?.ui?.modalTitle || DEFAULT_CONFIG.ui.modalTitle,
-    loadingText: 'Generating answer based on documentation...',
+    loadingText: config?.ui?.loadingText || DEFAULT_CONFIG.ui.loadingText,
     errorText: config?.ui?.errorText || DEFAULT_CONFIG.ui.errorText,
-    retryButtonText: 'Retry Query',
+    retryButtonText: config?.ui?.retryButtonText || DEFAULT_CONFIG.ui.retryButtonText,
     footerText: config?.ui?.footerText || DEFAULT_CONFIG.ui.footerText,
-    retrievingText: 'Retrieving document content...',
-    generatingText: 'Generating AI response...',
+    retrievingText: config?.ui?.retrievingText || DEFAULT_CONFIG.ui.retrievingText,
+    generatingText: config?.ui?.generatingText || DEFAULT_CONFIG.ui.generatingText,
+    questionPrefix: config?.ui?.questionPrefix || DEFAULT_CONFIG.ui.questionPrefix,
+    searchKeywordsLabel: config?.ui?.searchKeywordsLabel || DEFAULT_CONFIG.ui.searchKeywordsLabel,
+    documentsFoundLabel: config?.ui?.documentsFoundLabel || DEFAULT_CONFIG.ui.documentsFoundLabel,
+    documentsMoreText: config?.ui?.documentsMoreText || DEFAULT_CONFIG.ui.documentsMoreText,
+    sourcesHeaderText: config?.ui?.sourcesHeaderText || DEFAULT_CONFIG.ui.sourcesHeaderText,
+    searchLinksHelpText: config?.ui?.searchLinksHelpText || DEFAULT_CONFIG.ui.searchLinksHelpText,
+    closeButtonAriaLabel: config?.ui?.closeButtonAriaLabel || DEFAULT_CONFIG.ui.closeButtonAriaLabel,
+    cachedResponseText: config?.ui?.cachedResponseText || DEFAULT_CONFIG.ui.cachedResponseText,
+    documentsAnalyzedText: config?.ui?.documentsAnalyzedText || DEFAULT_CONFIG.ui.documentsAnalyzedText,
+    searchResultsOnlyText: config?.ui?.searchResultsOnlyText || DEFAULT_CONFIG.ui.searchResultsOnlyText,
+    noDocumentsFoundError: config?.ui?.noDocumentsFoundError || DEFAULT_CONFIG.ui.noDocumentsFoundError,
+    noSearchResultsError: config?.ui?.noSearchResultsError || DEFAULT_CONFIG.ui.noSearchResultsError,
   };
 
   // Function to handle retrying the query
@@ -223,7 +235,7 @@ export function AISearchModal({
           );
 
           if (result.documents.length === 0) {
-            throw new Error('Could not find any relevant documentation for your query');
+            throw new Error(modalTexts.noDocumentsFoundError);
           }
 
           setRetrievedContent(result.documents);
@@ -243,7 +255,7 @@ export function AISearchModal({
         } else {
           // Fallback to original search behavior
           if (searchResults.length === 0) {
-            throw new Error('No search results available to retrieve content from');
+            throw new Error(modalTexts.noSearchResultsError);
           }
 
           setSearchStep({
@@ -315,7 +327,7 @@ export function AISearchModal({
 
 ---
 
-**Sources:**
+**${modalTexts.sourcesHeaderText}**
 ${retrievedContent.slice(0, 5).map((doc, idx) => 
   `${idx + 1}. [${doc.title}](${doc.url})`
 ).join('\n')}`;
@@ -379,14 +391,14 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
       <div className={modalClasses.content}>
         <div className="ai-modal-header">
           <h3>{modalTexts.modalTitle}</h3>
-          <button className="ai-modal-close" onClick={onClose}>
+          <button className="ai-modal-close" onClick={onClose} aria-label={modalTexts.closeButtonAriaLabel}>
             &times;
           </button>
         </div>
 
         <div className="ai-modal-body">
           <div className="ai-question">
-            <strong>Q:</strong> {query}
+            <strong>{modalTexts.questionPrefix}</strong> {query}
           </div>
 
           {loading ? (
@@ -408,7 +420,7 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
                       <div className="ai-progress-details">
                         {searchStep.details.keywords && searchStep.details.keywords.length > 0 && (
                           <div className="ai-keywords-section">
-                            <strong>Search keywords:</strong>
+                            <strong>{modalTexts.searchKeywordsLabel}</strong>
                             <ul className="ai-keywords-list">
                               {searchStep.details.keywords.map((keyword, idx) => (
                                 <li key={idx} className="ai-keyword-item">{keyword}</li>
@@ -419,7 +431,7 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
                         
                         {searchStep.details.documentsFound !== undefined && searchStep.details.documentsFound > 0 && (
                           <div className="ai-documents-section">
-                            <strong>Documents found: {searchStep.details.documentsFound}</strong>
+                            <strong>{modalTexts.documentsFoundLabel.replace('{count}', searchStep.details.documentsFound.toString())}</strong>
                             {searchStep.details.documentLinks && searchStep.details.documentLinks.length > 0 && (
                               <ul className="ai-document-links">
                                 {searchStep.details.documentLinks.slice(0, 5).map((link, idx) => (
@@ -431,7 +443,7 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
                                 ))}
                                 {searchStep.details.documentLinks.length > 5 && (
                                   <li className="ai-document-link-more">
-                                    ...and {searchStep.details.documentLinks.length - 5} more
+                                    {modalTexts.documentsMoreText.replace('{count}', (searchStep.details.documentLinks.length - 5).toString())}
                                   </li>
                                 )}
                               </ul>
@@ -476,7 +488,7 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
 
               {searchResults.length > 0 && (
                 <div className="ai-search-links">
-                  <p>You might find these search results helpful:</p>
+                  <p>{modalTexts.searchLinksHelpText}</p>
                   <ul>
                     {searchResults.slice(0, 3).map((result, idx) => (
                       <li key={idx}>
@@ -553,15 +565,15 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
         <div className="ai-modal-footer">
           {isFromCache ? (
             <span>
-              {modalTexts.footerText} • Retrieved from cache
+              {modalTexts.footerText} • {modalTexts.cachedResponseText}
             </span>
           ) : (
             <span>
               {orchestratorRef.current 
-                ? `${modalTexts.footerText} • ${retrievedContent.length} documents analyzed`
+                ? `${modalTexts.footerText} • ${modalTexts.documentsAnalyzedText.replace('{count}', retrievedContent.length.toString())}`
                 : `${modalTexts.footerText} • Found ${retrievedContent.length} documents`
               }
-              {fetchFailed ? ' (search results only)' : ''}
+              {fetchFailed ? ` ${modalTexts.searchResultsOnlyText}` : ''}
             </span>
           )}
         </div>
