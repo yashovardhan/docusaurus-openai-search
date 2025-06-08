@@ -37,7 +37,7 @@
         "@docsearch/react": "^3.0.0",
         "algoliasearch": "^4.14.0",
         "docusaurus-openai-search": "file:docusaurus-openai-search-3.17.0.tgz",
-        "openai": "^4.0.0",
+        "openai": "^5.1.1",
         "react-markdown": "^10.1.0"
     },
     "devDependencies": {
