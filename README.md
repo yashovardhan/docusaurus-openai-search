@@ -181,6 +181,7 @@ The `aiConfig` prop configures the AI-powered search features:
 | `cacheTTL` | number | No | Cache time-to-live in seconds (default: `3600`) |
 | `onAIQuery` | function | No | Callback function when an AI query is made |
 | `enableLogging` | boolean | No | Enable detailed logging for debugging (default: `false`) |
+| `recaptcha` | object | No | Google reCAPTCHA v3 configuration for bot protection |
 
 ### Backend Options
 
@@ -189,6 +190,19 @@ The `backend` object configures the connection to your backend service:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `url` | string | Yes | URL of your backend service that handles all AI operations |
+
+### reCAPTCHA Options
+
+The `recaptcha` object configures Google reCAPTCHA v3 for bot protection:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `siteKey` | string | Yes | Your Google reCAPTCHA v3 site key |
+
+To enable CAPTCHA protection:
+1. Get keys from [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin/)
+2. Configure your backend with the secret key
+3. Add the site key to your frontend configuration
 
 ### UI Options
 
@@ -254,6 +268,10 @@ const aiConfig = {
   context: {
     siteName: "Your Site Name",
     systemContext: "This is documentation for [your product description]",
+  },
+  // Optional: reCAPTCHA v3 for bot protection
+  recaptcha: {
+    siteKey: "your-recaptcha-site-key",
   },
   enableLogging: false,
 };

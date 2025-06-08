@@ -82,6 +82,14 @@ export interface UIOptions {
 }
 
 /**
+ * reCAPTCHA configuration
+ */
+export interface RecaptchaOptions {
+  /** Google reCAPTCHA v3 site key */
+  siteKey: string;
+}
+
+/**
  * Docusaurus AI Search configuration
  */
 export interface DocusaurusAISearchConfig {
@@ -111,6 +119,9 @@ export interface DocusaurusAISearchConfig {
   
   /** Enable detailed logging for debugging */
   enableLogging?: boolean;
+  
+  /** reCAPTCHA configuration for bot protection */
+  recaptcha?: RecaptchaOptions;
 }
 
 /**

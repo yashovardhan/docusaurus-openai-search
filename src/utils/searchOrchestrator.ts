@@ -1,6 +1,7 @@
 import { InternalDocSearchHit } from '@docsearch/react';
 import { getLogger } from './logger';
 import { DocusaurusAISearchConfig } from '../types';
+import { addRecaptchaHeader } from './recaptcha';
 
 export interface SearchStep {
   step: 'requesting-keywords' | 'keywords-received' | 'searching' | 'documents-found' | 'generating-answer' | 'complete';
@@ -23,6 +24,7 @@ export class SearchOrchestrator {
   private logger = getLogger();
   private config: DocusaurusAISearchConfig;
   private onProgress?: (step: SearchStep) => void;
+  private recaptchaSiteKey?: string;
 
   constructor(
     config: DocusaurusAISearchConfig,
@@ -30,6 +32,7 @@ export class SearchOrchestrator {
   ) {
     this.config = config;
     this.onProgress = onProgress;
+    this.recaptchaSiteKey = config.recaptcha?.siteKey;
   }
 
   /**
@@ -139,11 +142,18 @@ export class SearchOrchestrator {
    * Get search keywords from backend
    */
   private async getKeywordsFromBackend(query: string): Promise<string[]> {
+    let headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add reCAPTCHA token if configured
+    if (this.recaptchaSiteKey) {
+      headers = await addRecaptchaHeader(headers, this.recaptchaSiteKey, 'keywords');
+    }
+    
     const response = await fetch(`${this.config.backend.url}/api/keywords`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         query,
         systemContext: this.config.context?.systemContext,
@@ -167,11 +177,18 @@ export class SearchOrchestrator {
     query: string,
     documents: DocumentContent[]
   ): Promise<string> {
+    let headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add reCAPTCHA token if configured
+    if (this.recaptchaSiteKey) {
+      headers = await addRecaptchaHeader(headers, this.recaptchaSiteKey, 'generate_answer');
+    }
+    
     const response = await fetch(`${this.config.backend.url}/api/generate-answer`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         query,
         documents: documents.slice(0, 10), // Backend will handle the limit

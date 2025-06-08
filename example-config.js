@@ -89,4 +89,11 @@ module.exports = {
     // Track AI usage, analytics, etc.
     console.log('AI Query:', query, 'Success:', success);
   },
+  
+  // Optional: reCAPTCHA configuration for bot protection
+  recaptcha: {
+    // Your Google reCAPTCHA v3 site key
+    siteKey: 'your-recaptcha-site-key-here',
+    // Get your keys from: https://www.google.com/recaptcha/admin/
+  },
 }; 
