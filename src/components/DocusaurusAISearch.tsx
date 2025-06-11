@@ -317,11 +317,18 @@ export function DocusaurusAISearch({
           searchInput.placeholder = aiConfig.ui.searchInputPlaceholder;
         }
         
+        // Remove any maxLength restrictions to allow longer queries
+        if (searchInput) {
+          searchInput.removeAttribute('maxLength');
+          // Also set a very high maxLength as a fallback in case the attribute gets re-added
+          searchInput.maxLength = 9999;
+        }
+        
         if (searchInput && searchDropdown) {
           let aiButtonAdded = false;
           
           const addAiButton = (query: string) => {
-            if (!query || query.trim().length < 3) {
+            if (!query || query.trim().length === 0) {
               return;
             }
             
@@ -356,6 +363,8 @@ export function DocusaurusAISearch({
                 button.addEventListener('click', (e) => {
                   e.preventDefault();
                   
+                  const currentQuery = searchInput.value.trim();
+                  
                   const searchResultItems = Array.from(
                     document.querySelectorAll('.DocSearch-Hit')
                   ).map((hit) => {
@@ -388,7 +397,7 @@ export function DocusaurusAISearch({
                     };
                   });
                   
-                  handleAskAI(query, searchResultItems as InternalDocSearchHit[]);
+                  handleAskAI(currentQuery, searchResultItems as InternalDocSearchHit[]);
                   closeModal();
                 });
               }
@@ -399,7 +408,7 @@ export function DocusaurusAISearch({
             const hasResults = document.querySelector('.DocSearch-Hit');
             const query = searchInput.value.trim();
             
-            if (hasResults && query.length >= 3 && !aiButtonAdded) {
+            if (hasResults && query.length > 0 && !aiButtonAdded) {
               addAiButton(query);
             }
           });
@@ -416,9 +425,15 @@ export function DocusaurusAISearch({
               const hasResults = document.querySelector('.DocSearch-Hit');
               const query = searchInput.value.trim();
               
-              if (hasResults && query.length >= 3) {
+              // Ensure maxLength restriction is removed even on new searches
+              if (searchInput.hasAttribute('maxLength') && searchInput.maxLength < 9999) {
+                searchInput.removeAttribute('maxLength');
+                searchInput.maxLength = 9999;
+              }
+              
+              if (hasResults && query.length > 0) {
                 addAiButton(query);
-              } else if (query.length < 3) {
+              } else if (query.length === 0) {
                 const existingButton = document.querySelector('.ai-search-header');
                 if (existingButton) {
                   existingButton.remove();
@@ -444,7 +459,13 @@ export function DocusaurusAISearch({
           searchInput.addEventListener('keydown', (e) => {
             if (typingTimer) clearTimeout(typingTimer);
             
-            if (e.key === 'Enter' && searchInput.value.trim().length >= 3) {
+            // Check and remove maxLength restriction on every keydown
+            if (searchInput.hasAttribute('maxLength') && searchInput.maxLength < 9999) {
+              searchInput.removeAttribute('maxLength');
+              searchInput.maxLength = 9999;
+            }
+            
+            if (e.key === 'Enter' && searchInput.value.trim().length > 0) {
               const hasResults = document.querySelector('.DocSearch-Hit');
               
               if (hasResults && aiConfig?.enabled !== false) {
@@ -634,4 +655,4 @@ export function DocusaurusAISearch({
       )}
     </div>
   );
-} 
+}
