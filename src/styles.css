@@ -305,6 +305,29 @@
   font-weight: var(--ifm-font-weight-semibold);
 }
 
+/* P4-002: Loading state for markdown components */
+.ai-loading-markdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.ai-loading-markdown .ai-loading-spinner {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 1rem;
+}
+
+.ai-loading-markdown p {
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
+}
+
 /* Remove all the redundant custom admonition styles and custom CSS variables */
 
 /* AI Progress Details */
@@ -380,4 +403,205 @@
   color: var(--ifm-color-secondary-darkest);
   font-size: 0.875rem;
   margin-top: 4px;
+}
+
+/* P3-001: Error Boundary Styles */
+.error-boundary {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  font-family: var(--ifm-font-family-base);
+}
+
+.error-boundary-content {
+  background: var(--ifm-background-color);
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.error-boundary-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.error-boundary-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  color: var(--ifm-color-danger);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.error-boundary-icon {
+  color: var(--ifm-color-danger);
+}
+
+.error-boundary-description {
+  color: var(--ifm-color-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.error-boundary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.error-boundary-button--primary {
+  background: var(--ifm-color-primary);
+  color: var(--ifm-color-primary-contrast-background);
+}
+
+.error-boundary-button--primary:hover {
+  background: var(--ifm-color-primary-dark);
+}
+
+.error-boundary-button--secondary {
+  background: var(--ifm-color-secondary);
+  color: var(--ifm-color-secondary-contrast-background);
+}
+
+.error-boundary-button--secondary:hover {
+  background: var(--ifm-color-secondary-dark);
+}
+
+.error-boundary-max-retries {
+  text-align: center;
+}
+
+.error-boundary-max-retries p {
+  margin: 0 0 1rem 0;
+  color: var(--ifm-color-warning);
+}
+
+.error-boundary-details {
+  margin-bottom: 2rem;
+}
+
+.error-boundary-details-toggle {
+  background: transparent;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  color: var(--ifm-color-content);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.error-boundary-details-toggle:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.error-boundary-details-content {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 4px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.error-boundary-error-info h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--ifm-color-emphasis-800);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.error-boundary-error-message,
+.error-boundary-stack-trace,
+.error-boundary-component-stack {
+  background: var(--ifm-color-emphasis-200);
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 0.5rem 0 1rem 0;
+  overflow-x: auto;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--ifm-color-emphasis-800);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-boundary-footer {
+  text-align: center;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  padding-top: 1rem;
+}
+
+.error-boundary-help-text {
+  margin: 0;
+  color: var(--ifm-color-secondary);
+  font-size: 0.875rem;
+}
+
+/* Dark theme adjustments */
+[data-theme='dark'] .error-boundary-content {
+  background: var(--ifm-background-color);
+  border-color: var(--ifm-color-emphasis-300);
+}
+
+[data-theme='dark'] .error-boundary-details-content {
+  background: var(--ifm-color-emphasis-200);
+  border-color: var(--ifm-color-emphasis-300);
+}
+
+[data-theme='dark'] .error-boundary-error-message,
+[data-theme='dark'] .error-boundary-stack-trace,
+[data-theme='dark'] .error-boundary-component-stack {
+  background: var(--ifm-color-emphasis-300);
+  color: var(--ifm-color-emphasis-900);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .error-boundary-content {
+    padding: 1.5rem;
+    width: 95%;
+  }
+  
+  .error-boundary-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .error-boundary-button {
+    width: 100%;
+    justify-content: center;
+  }
 } 

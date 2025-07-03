@@ -8,6 +8,7 @@ import { useAlgoliaContextualFacetFilters, useSearchResultUrlProcessor } from '@
 import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { AISearchModal } from './AISearchModal';
+import { ErrorBoundary } from './ErrorBoundary';
 import { createLogger } from '../utils';
 import { DocusaurusAISearchProps } from '../types';
 import { InternalDocSearchHit } from '@docsearch/react';
@@ -142,7 +143,7 @@ function useSearchParameters({
   };
 }
 
-function ResultsFooter({ 
+const ResultsFooter = React.memo(({ 
   state, 
   onClose,
   seeAllResultsText
@@ -150,7 +151,7 @@ function ResultsFooter({
   state: any; 
   onClose: () => void; 
   seeAllResultsText?: string;
-}) {
+}) => {
   const createSearchLink = useSearchLinkCreator();
   
   return (
@@ -175,12 +176,13 @@ function ResultsFooter({
       </div>
     </div>
   );
-}
+});
 
 /**
  * Docusaurus AI Search component
+ * P4-001: Memoized to prevent unnecessary re-renders
  */
-export function DocusaurusAISearch({
+export const DocusaurusAISearch = React.memo(function DocusaurusAISearch({
   themeConfig,
   aiConfig
 }: DocusaurusAISearchProps): JSX.Element {
@@ -253,6 +255,16 @@ export function DocusaurusAISearch({
     }
   }, []);
   
+  // Cleanup search container on unmount
+  useEffect(() => {
+    return () => {
+      if (searchContainer.current && searchContainer.current.parentNode) {
+        searchContainer.current.parentNode.removeChild(searchContainer.current);
+        searchContainer.current = null;
+      }
+    };
+  }, []);
+  
   const openModal = useCallback(() => {
     prepareSearchContainer();
     importDocSearchModalIfNeeded().then(() => setIsOpen(true));
@@ -276,6 +288,11 @@ export function DocusaurusAISearch({
     }
   }, [aiConfig]);
   
+  // P4-001: Memoize AI modal close handler to prevent unnecessary re-renders
+  const closeAIModal = useCallback(() => {
+    setShowAIModal(false);
+  }, []);
+  
   const handleInput = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'f' && (event.metaKey || event.ctrlKey)) {
@@ -288,6 +305,11 @@ export function DocusaurusAISearch({
     },
     [openModal],
   );
+  
+  // P4-001: Memoize hitComponent to prevent unnecessary re-renders
+  const hitComponent = useCallback(({ hit, children }: { hit: any; children: React.ReactNode }) => (
+    <Link to={hit.url}>{children}</Link>
+  ), []);
   
   const resultsFooterComponent = useCallback(
     ({ state }: { state: any }) => <ResultsFooter 
@@ -326,6 +348,8 @@ export function DocusaurusAISearch({
         
         if (searchInput && searchDropdown) {
           let aiButtonAdded = false;
+          let observer: MutationObserver | null = null;
+          let typingTimer: NodeJS.Timeout | null = null;
           
           const addAiButton = (query: string) => {
             if (!query || query.trim().length === 0) {
@@ -404,14 +428,16 @@ export function DocusaurusAISearch({
             }
           };
           
-          const observer = new MutationObserver(() => {
+          const handleMutationObserver = () => {
             const hasResults = document.querySelector('.DocSearch-Hit');
             const query = searchInput.value.trim();
             
             if (hasResults && query.length > 0 && !aiButtonAdded) {
               addAiButton(query);
             }
-          });
+          };
+          
+          observer = new MutationObserver(handleMutationObserver);
           
           observer.observe(searchDropdown, {
             childList: true,
@@ -443,20 +469,17 @@ export function DocusaurusAISearch({
             }, 100); 
           };
           
-          searchInput.addEventListener('click', handleNewSearch);
-          
-          let typingTimer: NodeJS.Timeout | null = null;
           const doneTyping = () => {
             aiButtonAdded = false;
             handleNewSearch();
           };
           
-          searchInput.addEventListener('keyup', () => {
+          const handleKeyUp = () => {
             if (typingTimer) clearTimeout(typingTimer);
             typingTimer = setTimeout(doneTyping, 500);
-          });
+          };
           
-          searchInput.addEventListener('keydown', (e) => {
+          const handleKeyDown = (e: KeyboardEvent) => {
             if (typingTimer) clearTimeout(typingTimer);
             
             // Check and remove maxLength restriction on every keydown
@@ -504,14 +527,22 @@ export function DocusaurusAISearch({
                 closeModal();
               }
             }
-          });
+          };
+          
+          searchInput.addEventListener('click', handleNewSearch);
+          searchInput.addEventListener('keyup', handleKeyUp);
+          searchInput.addEventListener('keydown', handleKeyDown);
           
           return () => {
-            observer.disconnect();
+            if (observer) {
+              observer.disconnect();
+            }
             searchInput.removeEventListener('click', handleNewSearch);
-            searchInput.removeEventListener('keyup', () => {});
-            searchInput.removeEventListener('keydown', () => {});
-            if (typingTimer) clearTimeout(typingTimer);
+            searchInput.removeEventListener('keyup', handleKeyUp);
+            searchInput.removeEventListener('keydown', handleKeyDown);
+            if (typingTimer) {
+              clearTimeout(typingTimer);
+            }
           };
         }
       }, 200);
@@ -521,16 +552,26 @@ export function DocusaurusAISearch({
   }, [isOpen, handleAskAI, closeModal, aiConfig]);
   
   useEffect(() => {
+    let linkAdded = false;
+    let linkElement: HTMLLinkElement | null = null;
+    
     if (appId && typeof document !== 'undefined') {
       const existingLink = document.querySelector(`link[href="https://${appId}-dsn.algolia.net"]`);
       if (!existingLink) {
-        const link = document.createElement('link');
-        link.rel = 'preconnect';
-        link.href = `https://${appId}-dsn.algolia.net`;
-        link.crossOrigin = 'anonymous';
-        document.head.appendChild(link);
+        linkElement = document.createElement('link');
+        linkElement.rel = 'preconnect';
+        linkElement.href = `https://${appId}-dsn.algolia.net`;
+        linkElement.crossOrigin = 'anonymous';
+        document.head.appendChild(linkElement);
+        linkAdded = true;
       }
     }
+    
+    return () => {
+      if (linkAdded && linkElement && linkElement.parentNode) {
+        linkElement.parentNode.removeChild(linkElement);
+      }
+    };
   }, [appId]);
   
   // Apply custom button styling and keyboard shortcut visibility
@@ -617,42 +658,63 @@ export function DocusaurusAISearch({
       )}
       
       {isOpen && DocSearchModal && searchContainer.current && createPortal(
-        <DocSearchModal
-          onClose={closeModal}
-          initialScrollY={window.scrollY}
-          initialQuery={initialQuery}
-          navigator={navigator}
-          transformItems={computedTransformItems}
-          hitComponent={({ hit, children }: { hit: any; children: React.ReactNode }) => (
-            <Link to={hit.url}>{children}</Link>
-          )}
-          transformSearchClient={transformSearchClient}
-          {...(searchPagePath && {
-            resultsFooterComponent,
-          })}
-          placeholder={searchPlaceholder}
-          translations={translations?.modal ?? defaultTranslations.modal}
-          searchParameters={computedSearchParameters}
-          indexName={indexName}
-          apiKey={apiKey}
-          appId={appId}
-        />,
+        <ErrorBoundary
+          componentName="DocSearch Modal"
+          enableLogging={aiConfig?.enableLogging}
+          onError={(error, errorInfo) => {
+            console.error('[DocusaurusAISearch] DocSearch Modal Error:', error);
+            // Close modal on error to prevent stuck state
+            closeModal();
+          }}
+          maxRetries={1}
+        >
+          <DocSearchModal
+            onClose={closeModal}
+            initialScrollY={window.scrollY}
+            initialQuery={initialQuery}
+            navigator={navigator}
+            transformItems={computedTransformItems}
+            hitComponent={hitComponent}
+            transformSearchClient={transformSearchClient}
+            {...(searchPagePath && {
+              resultsFooterComponent,
+            })}
+            placeholder={searchPlaceholder}
+            translations={translations?.modal ?? defaultTranslations.modal}
+            searchParameters={computedSearchParameters}
+            indexName={indexName}
+            apiKey={apiKey}
+            appId={appId}
+          />
+        </ErrorBoundary>,
         searchContainer.current
       )}
       
       {showAIModal && createPortal(
         <div className="docusaurus-openai-search">
-          <AISearchModal
-            query={aiQuery}
-            onClose={() => setShowAIModal(false)}
-            searchResults={searchResults}
-            config={aiConfig}
-            themeConfig={themeConfig}
-            algoliaConfig={algoliaConfig}
-          />
+          <ErrorBoundary
+            componentName="AI Search Modal"
+            enableLogging={aiConfig?.enableLogging}
+            onError={(error, errorInfo) => {
+              console.error('[DocusaurusAISearch] AI Modal Error:', error);
+              if (aiConfig?.onAIQuery) {
+                aiConfig.onAIQuery(aiQuery, false);
+              }
+            }}
+            maxRetries={2}
+          >
+            <AISearchModal
+              query={aiQuery}
+              onClose={closeAIModal}
+              searchResults={searchResults}
+              config={aiConfig}
+              themeConfig={themeConfig}
+              algoliaConfig={algoliaConfig}
+            />
+          </ErrorBoundary>
         </div>,
         document.body
       )}
     </div>
   );
-}
+});

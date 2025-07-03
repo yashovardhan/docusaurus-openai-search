@@ -31,6 +31,27 @@ export class AISearchLogger {
     
     console.error(`${this.prefix} Error in ${context}:`, error);
   }
+  
+  /**
+   * Enable or disable logging
+   */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+  }
+  
+  /**
+   * Get current logging state
+   */
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+  
+  /**
+   * Reset logger state
+   */
+  reset(): void {
+    this.enabled = false;
+  }
 }
 
 // Create a singleton logger instance
@@ -46,4 +67,20 @@ export function getLogger(): AISearchLogger {
     loggerInstance = new AISearchLogger(false);
   }
   return loggerInstance;
+}
+
+/**
+ * Reset the logger instance (for cleanup/testing)
+ */
+export function resetLogger(): void {
+  if (loggerInstance) {
+    loggerInstance = null;
+  }
+}
+
+/**
+ * Check if logger instance exists
+ */
+export function hasLoggerInstance(): boolean {
+  return loggerInstance !== null;
 } 

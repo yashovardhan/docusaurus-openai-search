@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { AISearchModalProps } from '../types';
 import {
   createLogger,
@@ -7,13 +7,58 @@ import {
   type SearchStep,
   type DocumentContent
 } from '../utils';
+import { 
+  ModalCleanupUtils, 
+  RefCleanupUtils, 
+  useCleanup 
+} from '../utils/cleanup';
+import { useErrorBoundary } from '../components/ErrorBoundary';
 import '../styles.css';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import { Highlight, themes as prismThemes, PrismTheme } from 'prism-react-renderer';
-import type { Components } from 'react-markdown';
 import { DEFAULT_CONFIG } from '../config/defaults';
+
+// P4-002: Lazy load heavy dependencies to improve initial bundle size
+type LazyMarkdownComponents = {
+  ReactMarkdown: React.ComponentType<any>;
+  remarkGfm: any;
+  rehypeRaw: any;
+  Highlight: React.ComponentType<any>;
+  prismThemes: any;
+};
+
+// Cache for loaded components
+let markdownComponents: LazyMarkdownComponents | null = null;
+let markdownLoadPromise: Promise<LazyMarkdownComponents> | null = null;
+
+// P4-002: Lazy load markdown dependencies
+async function loadMarkdownDependencies(): Promise<LazyMarkdownComponents> {
+  if (markdownComponents) {
+    return markdownComponents;
+  }
+  
+  if (markdownLoadPromise) {
+    return markdownLoadPromise;
+  }
+  
+  markdownLoadPromise = Promise.all([
+    import('react-markdown'),
+    import('remark-gfm'),
+    import('rehype-raw'),
+    import('prism-react-renderer')
+  ]).then(([reactMarkdown, remarkGfm, rehypeRaw, prismRenderer]) => {
+    const components = {
+      ReactMarkdown: reactMarkdown.default,
+      remarkGfm: remarkGfm.default,
+      rehypeRaw: rehypeRaw.default,
+      Highlight: prismRenderer.Highlight,
+      prismThemes: prismRenderer.themes
+    };
+    
+    markdownComponents = components;
+    return components;
+  });
+  
+  return markdownLoadPromise;
+}
 
 // Type definitions for code component props
 interface CodeProps {
@@ -21,29 +66,32 @@ interface CodeProps {
   inline?: boolean;
   className?: string;
   children: React.ReactNode;
-  theme?: PrismTheme;
+  theme?: any; // P4-002: Use 'any' type since PrismTheme is lazy loaded
 }
 
 /**
  * Custom code block renderer for ReactMarkdown
+ * P4-002: Updated to work with lazy-loaded components
  */
-const CodeBlock = ({ node, inline, className, children, ...props }: CodeProps) => {
+const CodeBlock = React.memo(({ node, inline, className, children, components, ...props }: CodeProps & { components?: LazyMarkdownComponents }) => {
   const match = /language-(\w+)/.exec(className || '');
   const language = match && match[1] ? match[1] : '';
   const code = String(children).replace(/\n$/, '');
 
-  if (!inline && language) {
+  if (!inline && language && components) {
+    const { Highlight, prismThemes } = components;
+    
     return (
       <Highlight 
         theme={props.theme || prismThemes.github} 
         code={code} 
         language={language}
       >
-        {({ className, style, tokens, getLineProps, getTokenProps }) => (
+        {({ className, style, tokens, getLineProps, getTokenProps }: any) => (
           <pre className={className} style={style}>
-            {tokens.map((line, i) => (
+            {tokens.map((line: any, i: number) => (
               <div key={i} {...getLineProps({ line })}>
-                {line.map((token, key) => (
+                {line.map((token: any, key: number) => (
                   <span key={key} {...getTokenProps({ token })} />
                 ))}
               </div>
@@ -59,7 +107,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: CodeProps) =
       {children}
     </code>
   );
-};
+});
 
 /**
  * Modal component that displays AI-generated answers to search queries
@@ -85,6 +133,10 @@ export function AISearchModal({
   const [isFromCache, setIsFromCache] = useState<boolean>(false);
   const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
   
+  // P4-002: State for lazy-loaded markdown components
+  const [markdownComponentsLoaded, setMarkdownComponentsLoaded] = useState<LazyMarkdownComponents | null>(null);
+  const [markdownLoading, setMarkdownLoading] = useState<boolean>(false);
+  
   // Reference to the markdown container
   const markdownRef = useRef<HTMLDivElement>(null);
   
@@ -96,17 +148,44 @@ export function AISearchModal({
   
   // Cache instance
   const cache = ResponseCache.getInstance();
+  
+  // Cleanup hook for component
+  const { registerCleanup, cleanupComponent } = useCleanup('ai-search-modal');
+  
+  // P3-001: Error boundary hook for enhanced error handling
+  const { createErrorHandler } = useErrorBoundary();
 
   // Initialize logger with enableLogging config
   useEffect(() => {
     createLogger(config?.enableLogging || false);
   }, [config?.enableLogging]);
+  
+  // P4-002: Load markdown components when modal opens
+  useEffect(() => {
+    if (!markdownComponentsLoaded && !markdownLoading) {
+      setMarkdownLoading(true);
+      loadMarkdownDependencies()
+        .then((components) => {
+          setMarkdownComponentsLoaded(components);
+          setMarkdownLoading(false);
+        })
+        .catch((error) => {
+          console.error('[AI Search Modal] Failed to load markdown components:', error);
+          setMarkdownLoading(false);
+        });
+    }
+  }, [markdownComponentsLoaded, markdownLoading]);
 
   // Get the backend URL from config
   const backendUrl = config?.backend?.url;
 
-  // Get Prism theme for code highlighting
-  const getPrismTheme = (): PrismTheme => {
+  // P4-001 & P4-002: Memoize Prism theme computation with lazy-loaded components
+  const prismTheme = useMemo(() => {
+    // P4-002: Return null if markdown components aren't loaded yet
+    if (!markdownComponentsLoaded?.prismThemes) {
+      return null;
+    }
+    
     const isDarkTheme = typeof document !== 'undefined' && 
                         document.documentElement.dataset.theme === 'dark';
     
@@ -116,22 +195,22 @@ export function AISearchModal({
           typeof themeConfig.prism.darkTheme === 'object' &&
           'plain' in themeConfig.prism.darkTheme &&
           'styles' in themeConfig.prism.darkTheme) {
-        return themeConfig.prism.darkTheme as PrismTheme;
+        return themeConfig.prism.darkTheme;
       } else if (
           themeConfig.prism.theme &&
           typeof themeConfig.prism.theme === 'object' &&
           'plain' in themeConfig.prism.theme &&
           'styles' in themeConfig.prism.theme) {
-        return themeConfig.prism.theme as PrismTheme;
+        return themeConfig.prism.theme;
       }
     }
     
     // Default to standard themes if custom ones aren't available
-    return isDarkTheme ? prismThemes.vsDark : prismThemes.github;
-  };
+    return isDarkTheme ? markdownComponentsLoaded.prismThemes.vsDark : markdownComponentsLoaded.prismThemes.github;
+  }, [themeConfig?.prism, markdownComponentsLoaded?.prismThemes]);
 
-  // Default modal text overrides
-  const modalTexts = {
+  // P4-001: Memoize modal texts to prevent object recreation on every render
+  const modalTexts = useMemo(() => ({
     modalTitle: config?.ui?.modalTitle || DEFAULT_CONFIG.ui.modalTitle,
     loadingText: config?.ui?.loadingText || DEFAULT_CONFIG.ui.loadingText,
     errorText: config?.ui?.errorText || DEFAULT_CONFIG.ui.errorText,
@@ -151,10 +230,11 @@ export function AISearchModal({
     searchResultsOnlyText: config?.ui?.searchResultsOnlyText || DEFAULT_CONFIG.ui.searchResultsOnlyText,
     noDocumentsFoundError: config?.ui?.noDocumentsFoundError || DEFAULT_CONFIG.ui.noDocumentsFoundError,
     noSearchResultsError: config?.ui?.noSearchResultsError || DEFAULT_CONFIG.ui.noSearchResultsError,
-  };
+  }), [config?.ui]);
 
-  // Function to handle retrying the query
+  // P2-001: Enhanced retry handler with proper ref reset and safety checks
   const handleRetry = useCallback(() => {
+    // Reset all states
     setIsRetrying(true);
     setError(null);
     setLoading(true);
@@ -162,7 +242,25 @@ export function AISearchModal({
     setRetrievedContent([]);
     setAnswer(null);
     setIsGeneratingAnswer(false);
-    answerGenerationStartedRef.current = false;
+    
+    // P2-001: Enhanced ref reset with safety checks
+    try {
+      // Ensure answerGenerationStartedRef is properly reset
+      if (answerGenerationStartedRef && answerGenerationStartedRef.current !== undefined) {
+        answerGenerationStartedRef.current = false;
+      }
+      
+      // P3-002: Reset orchestrator and cancel pending operations
+      if (orchestratorRef.current) {
+        // Cancel any ongoing operations before retry
+        if (typeof orchestratorRef.current.cancelAllOperations === 'function') {
+          orchestratorRef.current.cancelAllOperations();
+        }
+        orchestratorRef.current = null;
+      }
+    } catch (error) {
+      console.error('[AI Search Modal] Error during retry ref reset:', error);
+    }
 
     // Set a small delay to ensure UI updates before retrying
     setTimeout(() => {
@@ -170,19 +268,136 @@ export function AISearchModal({
       // The useEffects will handle the retry
     }, 100);
   }, []);
+  
+  // P2-001: Enhanced close handler with comprehensive ref reset and safety checks
+  const handleClose = useCallback(() => {
+    // Pre-close safety checks
+    try {
+      // Ensure answerGenerationStartedRef is properly reset with safety check
+      if (answerGenerationStartedRef && answerGenerationStartedRef.current !== undefined) {
+        answerGenerationStartedRef.current = false;
+      }
+      
+      // P3-002: Stop any ongoing orchestrator operations
+      if (orchestratorRef.current) {
+        // Cancel all pending operations before clearing reference
+        if (typeof orchestratorRef.current.cancelAllOperations === 'function') {
+          orchestratorRef.current.cancelAllOperations();
+        }
+        orchestratorRef.current = null;
+      }
+      
+      // Reset refs on modal close with null checks
+      RefCleanupUtils.clearRefs(markdownRef, orchestratorRef, answerGenerationStartedRef);
+      
+      // Reset all state to initial values
+      ModalCleanupUtils.cleanupModal({
+        refs: [markdownRef, orchestratorRef, answerGenerationStartedRef],
+        states: [
+          { setter: setLoading, initialValue: true },
+          { setter: setError, initialValue: null },
+          { setter: setAnswer, initialValue: null },
+          { setter: setFormattedAnswer, initialValue: '' },
+          { setter: setRetrievedContent, initialValue: [] },
+          { setter: setSearchStep, initialValue: null },
+          { setter: setFetchFailed, initialValue: false },
+          { setter: setIsRetrying, initialValue: false },
+          { setter: setQueryAnalysis, initialValue: '' },
+          { setter: setAiCallCount, initialValue: 0 },
+          { setter: setIsFromCache, initialValue: false },
+          { setter: setIsGeneratingAnswer, initialValue: false }
+        ]
+      });
+      
+    } catch (error) {
+      // Safety net - log error but don't prevent modal from closing
+      console.error('[AI Search Modal] Error during close cleanup:', error);
+    } finally {
+      // Always call the original onClose regardless of cleanup success
+      onClose();
+    }
+  }, [onClose]);
 
-  // Initialize search orchestrator
+  // P2-001: Enhanced ref initialization and orchestrator setup with safety checks
   useEffect(() => {
-    if (backendUrl && config) {
+    // Ensure answerGenerationStartedRef is properly initialized
+    if (answerGenerationStartedRef.current === undefined || answerGenerationStartedRef.current === null) {
+      answerGenerationStartedRef.current = false;
+    }
+    
+    // Initialize orchestrator with safety checks
+    if (backendUrl && config && !orchestratorRef.current) {
       orchestratorRef.current = new SearchOrchestrator(
         config,
         (step) => setSearchStep(step)
       );
     }
+    
+    // Initialization cleanup on unmount
+    return () => {
+      // Ensure refs are properly reset on unmount
+      if (answerGenerationStartedRef.current !== undefined) {
+        answerGenerationStartedRef.current = false;
+      }
+    };
   }, [backendUrl, config]);
-
-  // First, retrieve document content using intelligent search
+  
+  // P2-001: Enhanced component lifecycle management with ref monitoring
   useEffect(() => {
+    // Register cleanup tasks with enhanced ref management
+    registerCleanup('refs', () => {
+      RefCleanupUtils.clearRefs(markdownRef, orchestratorRef, answerGenerationStartedRef);
+    }, 10);
+    
+    registerCleanup('orchestrator', () => {
+      if (orchestratorRef.current) {
+        // P3-002: Enhanced orchestrator cleanup with operation cancellation
+        if (typeof orchestratorRef.current.cancelAllOperations === 'function') {
+          orchestratorRef.current.cancelAllOperations();
+        }
+        orchestratorRef.current = null;
+      }
+    }, 5);
+    
+    registerCleanup('answerGeneration', () => {
+      // Ensure answer generation ref is properly reset
+      if (answerGenerationStartedRef && answerGenerationStartedRef.current !== undefined) {
+        answerGenerationStartedRef.current = false;
+      }
+    }, 8);
+    
+    return () => {
+      // Clear state on unmount with enhanced safety
+      try {
+        cleanupComponent();
+      } catch (error) {
+        console.error('[AI Search Modal] Error during component cleanup:', error);
+      }
+    };
+  }, [registerCleanup, cleanupComponent]);
+  
+  // P2-001: Monitor ref state changes for debugging and safety
+  useEffect(() => {
+    // Optional: Add development-only ref state monitoring
+    if (process.env.NODE_ENV === 'development' && config?.enableLogging) {
+      const checkRefs = () => {
+        console.debug('[AI Search Modal] Ref states:', {
+          markdownRef: !!markdownRef.current,
+          orchestratorRef: !!orchestratorRef.current,
+          answerGenerationStarted: answerGenerationStartedRef.current
+        });
+      };
+      
+      // Initial check
+      checkRefs();
+    }
+  }, [config?.enableLogging]);
+
+  // P3-001 & P3-002: Enhanced document content retrieval with comprehensive error handling and race condition protection
+  useEffect(() => {
+    const errorHandler = createErrorHandler('AISearchModal-fetchContent');
+    let isCancelled = false; // P3-002: Race condition protection
+    
     async function fetchContent() {
       if (!query) {
         setLoading(false);
@@ -199,6 +414,11 @@ export function AISearchModal({
         return;
       }
 
+      // P3-002: Check if this effect instance was cancelled
+      if (isCancelled) {
+        return;
+      }
+
       try {
         setFetchFailed(false);
 
@@ -210,6 +430,9 @@ export function AISearchModal({
           const cached = cache.getCached(query, cacheTTL);
           if (cached) {
             if (cached.response) {
+              // P3-002: Check for race condition before setting state
+              if (isCancelled) return;
+              
               // Full cache hit - we have everything
               setAnswer(cached.response);
               setRetrievedContent(cached.documents || []);
@@ -233,6 +456,9 @@ export function AISearchModal({
             algoliaConfig.searchClient,
             algoliaConfig.indexName
           );
+
+          // P3-002: Check for race condition after async operation
+          if (isCancelled) return;
 
           if (result.documents.length === 0) {
             throw new Error(modalTexts.noDocumentsFoundError);
@@ -297,33 +523,64 @@ export function AISearchModal({
             };
           });
 
+          // P3-002: Check for race condition before setting fallback data
+          if (isCancelled) return;
+          
           setRetrievedContent(documents);
         }
       } catch (err: any) {
-        setSearchStep(null);
-        setError(
-          `Unable to find relevant documentation: ${err.message || 'Unknown error'}. Please try a different search query.`
-        );
-        setLoading(false);
+        // P3-001: Enhanced error handling with error boundary integration
+        console.error('[AISearchModal] Error in fetchContent:', err);
         
-        // Track failed AI query if function is provided
-        if (config?.onAIQuery) {
-          config.onAIQuery(query, false);
+        setSearchStep(null);
+        
+        // Determine if this is a critical error that should trigger error boundary
+        const isCriticalError = err instanceof TypeError || 
+                               err.message?.includes('network') ||
+                               err.message?.includes('fetch') ||
+                               err.name === 'AbortError';
+        
+        if (isCriticalError) {
+          // For critical errors, trigger error boundary
+          errorHandler(err, { context: 'fetchContent', query });
+        } else {
+          // For non-critical errors, show user-friendly message
+          setError(
+            `Unable to find relevant documentation: ${err.message || 'Unknown error'}. Please try a different search query.`
+          );
+          setLoading(false);
+          
+          // Track failed AI query if function is provided
+          if (config?.onAIQuery) {
+            config.onAIQuery(query, false);
+          }
         }
       }
     }
 
     fetchContent();
+    
+    // P3-002: Cleanup function to prevent race conditions
+    return () => {
+      isCancelled = true;
+      // Cancel orchestrator operations if they're running
+      if (orchestratorRef.current && typeof orchestratorRef.current.cancelAllOperations === 'function') {
+        orchestratorRef.current.cancelAllOperations();
+      }
+    };
   }, [query, searchResults.length, algoliaConfig?.indexName]); // Minimal dependencies
 
-  // Effect to handle markdown response
+  // P3-001: Enhanced markdown response handling with error protection
   useEffect(() => {
-    if (answer) {
-      let markdownContent = answer;
+    const errorHandler = createErrorHandler('AISearchModal-markdownProcessing');
+    
+    try {
+      if (answer) {
+        let markdownContent = answer;
 
-      // Add source references if we have retrieved content
-      if (retrievedContent.length > 0) {
-        const sourcesMarkdown = `
+        // Add source references if we have retrieved content
+        if (retrievedContent.length > 0) {
+          const sourcesMarkdown = `
 
 ---
 
@@ -332,38 +589,55 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
   `${idx + 1}. [${doc.title}](${doc.url})`
 ).join('\n')}`;
 
-        markdownContent += sourcesMarkdown;
-      }
-
-      setFormattedAnswer(markdownContent);
-    }
-  }, [answer, config, retrievedContent]);
-
-  // Apply blockquote admonition classes after render
-  useEffect(() => {
-    if (markdownRef.current && !loading && !error) {
-      // Find all blockquotes
-      const blockquotes = markdownRef.current.querySelectorAll('blockquote');
-      
-      blockquotes.forEach(blockquote => {
-        // Find the first strong tag in the blockquote
-        const firstStrong = blockquote.querySelector('p:first-child strong:first-child');
-        
-        if (firstStrong) {
-          const text = firstStrong.textContent?.trim().toLowerCase();
-          
-          // Add appropriate class based on content
-          if (text === 'note' || text === 'info') {
-            blockquote.classList.add('note');
-          } else if (text === 'tip') {
-            blockquote.classList.add('tip');
-          } else if (text === 'warning') {
-            blockquote.classList.add('warning');
-          } else if (text === 'danger' || text === 'caution') {
-            blockquote.classList.add('danger');
-          }
+          markdownContent += sourcesMarkdown;
         }
-      });
+
+        setFormattedAnswer(markdownContent);
+      }
+    } catch (err: any) {
+      console.error('[AISearchModal] Error processing markdown:', err);
+      // For markdown processing errors, fallback to plain text
+      if (answer) {
+        setFormattedAnswer(answer);
+      }
+    }
+  }, [answer, config, retrievedContent, createErrorHandler]);
+
+  // P3-001: Enhanced DOM manipulation with error protection
+  useEffect(() => {
+    try {
+      if (markdownRef.current && !loading && !error) {
+        // Find all blockquotes
+        const blockquotes = markdownRef.current.querySelectorAll('blockquote');
+        
+        blockquotes.forEach(blockquote => {
+          try {
+            // Find the first strong tag in the blockquote
+            const firstStrong = blockquote.querySelector('p:first-child strong:first-child');
+            
+            if (firstStrong) {
+              const text = firstStrong.textContent?.trim().toLowerCase();
+              
+              // Add appropriate class based on content
+              if (text === 'note' || text === 'info') {
+                blockquote.classList.add('note');
+              } else if (text === 'tip') {
+                blockquote.classList.add('tip');
+              } else if (text === 'warning') {
+                blockquote.classList.add('warning');
+              } else if (text === 'danger' || text === 'caution') {
+                blockquote.classList.add('danger');
+              }
+            }
+          } catch (blockquoteError) {
+            console.warn('[AISearchModal] Error processing blockquote:', blockquoteError);
+            // Continue with other blockquotes even if one fails
+          }
+        });
+      }
+    } catch (err: any) {
+      console.error('[AISearchModal] Error in DOM manipulation:', err);
+      // DOM manipulation errors are non-critical, just log and continue
     }
   }, [loading, error, formattedAnswer]);
 
@@ -384,14 +658,14 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
       className={modalClasses.overlay}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
     >
       <div className={modalClasses.content}>
         <div className="ai-modal-header">
           <h3>{modalTexts.modalTitle}</h3>
-          <button className="ai-modal-close" onClick={onClose} aria-label={modalTexts.closeButtonAriaLabel}>
+          <button className="ai-modal-close" onClick={handleClose} aria-label={modalTexts.closeButtonAriaLabel}>
             &times;
           </button>
         </div>
@@ -507,55 +781,62 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
             <div className="ai-answer">
               <div className="ai-response">
                 <div className="ai-response-text markdown-body" ref={markdownRef}>
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
-                    components={{
-                      // Override pre rendering to avoid nesting
-                      // @ts-ignore - The type definition for pre component in ReactMarkdown is complex
-                      pre: ({ children }) => children,
-                      
-                      // @ts-ignore - The type definition for code component in ReactMarkdown is complex
-                      code: (codeProps: any) => {
-                        const { className, children } = codeProps;
-                        // Check if this is a code block or inline code
-                        const match = /language-(\w+)/.exec(className || '');
+                  {markdownComponentsLoaded ? (
+                    <markdownComponentsLoaded.ReactMarkdown 
+                      remarkPlugins={[markdownComponentsLoaded.remarkGfm]}
+                      rehypePlugins={[markdownComponentsLoaded.rehypeRaw]}
+                      components={{
+                        // Override pre rendering to avoid nesting
+                        // @ts-ignore - The type definition for pre component in ReactMarkdown is complex
+                        pre: ({ children }) => children,
                         
-                        // If no language is specified, render as inline code
-                        if (!match) {
-                          return <code className={className}>{children}</code>;
-                        }
-                        
-                        const language = match[1];
-                        const code = String(children).replace(/\n$/, '');
-                        
-                        // Get the appropriate theme based on current mode
-                        const codeTheme = getPrismTheme();
+                        // @ts-ignore - The type definition for code component in ReactMarkdown is complex
+                        code: (codeProps: any) => {
+                          const { className, children } = codeProps;
+                          // Check if this is a code block or inline code
+                          const match = /language-(\w+)/.exec(className || '');
+                          
+                          // If no language is specified, render as inline code
+                          if (!match) {
+                            return <code className={className}>{children}</code>;
+                          }
+                          
+                          const language = match[1];
+                          const code = String(children).replace(/\n$/, '');
+                          
+                          // P4-001 & P4-002: Use memoized theme with lazy-loaded components
+                          const codeTheme = prismTheme;
 
-                        return (
-                          <Highlight 
-                            theme={codeTheme} 
-                            code={code} 
-                            language={language}
-                          >
-                            {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                              <pre className={className} style={style}>
-                                {tokens.map((line, i) => (
-                                  <div key={i} {...getLineProps({ line })}>
-                                    {line.map((token, key) => (
-                                      <span key={key} {...getTokenProps({ token })} />
-                                    ))}
-                                  </div>
-                                ))}
-                              </pre>
-                            )}
-                          </Highlight>
-                        );
-                      }
-                    }}
-                  >
-                    {formattedAnswer}
-                  </ReactMarkdown>
+                          return (
+                            <markdownComponentsLoaded.Highlight 
+                              theme={codeTheme} 
+                              code={code} 
+                              language={language}
+                            >
+                              {({ className, style, tokens, getLineProps, getTokenProps }: any) => (
+                                <pre className={className} style={style}>
+                                  {tokens.map((line: any, i: number) => (
+                                    <div key={i} {...getLineProps({ line })}>
+                                      {line.map((token: any, key: number) => (
+                                        <span key={key} {...getTokenProps({ token })} />
+                                      ))}
+                                    </div>
+                                  ))}
+                                </pre>
+                              )}
+                            </markdownComponentsLoaded.Highlight>
+                          );
+                        }
+                      }}
+                    >
+                      {formattedAnswer}
+                    </markdownComponentsLoaded.ReactMarkdown>
+                  ) : (
+                    <div className="ai-loading-markdown">
+                      <div className="ai-loading-spinner"></div>
+                      <p>Loading markdown renderer...</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

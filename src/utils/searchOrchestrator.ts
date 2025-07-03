@@ -25,6 +25,10 @@ export class SearchOrchestrator {
   private config: DocusaurusAISearchConfig;
   private onProgress?: (step: SearchStep) => void;
   private recaptchaSiteKey?: string;
+  // P3-002: AbortController for canceling pending operations
+  private abortController: AbortController | null = null;
+  private pendingOperations: Set<Promise<any>> = new Set();
+  private isDestroyed: boolean = false;
 
   constructor(
     config: DocusaurusAISearchConfig,
@@ -33,6 +37,57 @@ export class SearchOrchestrator {
     this.config = config;
     this.onProgress = onProgress;
     this.recaptchaSiteKey = config.recaptcha?.siteKey;
+    // Initialize abort controller for this orchestrator instance
+    this.abortController = new AbortController();
+  }
+
+  /**
+   * P3-002: Cancel all pending operations and cleanup resources
+   */
+  cancelAllOperations(): void {
+    this.isDestroyed = true;
+    
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    
+    // Clear pending operations
+    this.pendingOperations.clear();
+    
+    this.logger.log('SearchOrchestrator: All operations cancelled');
+  }
+
+  /**
+   * P3-002: Check if operations should be aborted due to race conditions
+   */
+  private checkAborted(): void {
+    if (this.isDestroyed || !this.abortController || this.abortController.signal.aborted) {
+      throw new Error('Operation cancelled');
+    }
+  }
+
+  /**
+   * P3-002: Track pending operation and handle completion
+   */
+  private async trackOperation<T>(operation: Promise<T>, operationName: string): Promise<T> {
+    this.checkAborted();
+    
+    this.pendingOperations.add(operation);
+    
+    try {
+      const result = await operation;
+      this.checkAborted(); // Check again after completion
+      return result;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.logger.log(`${operationName} operation aborted`);
+        throw new Error('Operation cancelled');
+      }
+      throw error;
+    } finally {
+      this.pendingOperations.delete(operation);
+    }
   }
 
   /**
@@ -44,6 +99,9 @@ export class SearchOrchestrator {
     algoliaIndex: string
   ): Promise<{ answer: string; documents: DocumentContent[] }> {
     try {
+      // P3-002: Check if operation should proceed
+      this.checkAborted();
+      
       // Step 1: Request keywords from backend
       this.updateProgress({
         step: 'requesting-keywords',
@@ -51,7 +109,10 @@ export class SearchOrchestrator {
         progress: 10,
       });
 
-      const keywords = await this.getKeywordsFromBackend(query);
+      const keywords = await this.trackOperation(
+        this.getKeywordsFromBackend(query),
+        'getKeywords'
+      );
       
       this.updateProgress({
         step: 'keywords-received',
@@ -59,6 +120,9 @@ export class SearchOrchestrator {
         progress: 20,
         details: { keywords }
       });
+
+      // P3-002: Check abort before continuing
+      this.checkAborted();
 
       // Step 2: Search for each keyword
       this.updateProgress({
@@ -71,6 +135,9 @@ export class SearchOrchestrator {
       const documentLinks: string[] = [];
       
       for (let i = 0; i < keywords.length; i++) {
+        // P3-002: Check abort before each search iteration
+        this.checkAborted();
+        
         const keyword = keywords[i];
         this.updateProgress({
           step: 'searching',
@@ -83,7 +150,10 @@ export class SearchOrchestrator {
           }
         });
         
-        const results = await this.performSingleSearch(keyword, algoliaClient, algoliaIndex);
+        const results = await this.trackOperation(
+          this.performSingleSearch(keyword, algoliaClient, algoliaIndex),
+          `search-${keyword}`
+        );
         const documents = this.extractDocuments(results);
         
         // Add unique documents
@@ -106,6 +176,9 @@ export class SearchOrchestrator {
         }
       });
 
+      // P3-002: Check abort before answer generation
+      this.checkAborted();
+
       // Step 3: Generate answer using RAG
       this.updateProgress({
         step: 'generating-answer',
@@ -118,7 +191,10 @@ export class SearchOrchestrator {
         }
       });
 
-      const answer = await this.generateAnswerFromBackend(query, allDocuments);
+      const answer = await this.trackOperation(
+        this.generateAnswerFromBackend(query, allDocuments),
+        'generateAnswer'
+      );
 
       this.updateProgress({
         step: 'complete',
@@ -139,9 +215,11 @@ export class SearchOrchestrator {
   }
 
   /**
-   * Get search keywords from backend
+   * P3-002: Enhanced get search keywords from backend with AbortController
    */
   private async getKeywordsFromBackend(query: string): Promise<string[]> {
+    this.checkAborted();
+    
     let headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
@@ -151,6 +229,9 @@ export class SearchOrchestrator {
       headers = await addRecaptchaHeader(headers, this.recaptchaSiteKey, 'keywords');
     }
     
+    // P3-002: Check abort after potentially async reCAPTCHA operation
+    this.checkAborted();
+    
     const response = await fetch(`${this.config.backend.url}/api/keywords`, {
       method: 'POST',
       headers,
@@ -159,6 +240,8 @@ export class SearchOrchestrator {
         systemContext: this.config.context?.systemContext,
         maxKeywords: this.config.maxSearchQueries || 5
       }),
+      // P3-002: Add abort signal to fetch
+      signal: this.abortController?.signal,
     });
 
     if (!response.ok) {
@@ -171,12 +254,14 @@ export class SearchOrchestrator {
   }
 
   /**
-   * Generate answer from backend using RAG
+   * P3-002: Enhanced generate answer from backend using RAG with AbortController
    */
   private async generateAnswerFromBackend(
     query: string,
     documents: DocumentContent[]
   ): Promise<string> {
+    this.checkAborted();
+    
     let headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
@@ -186,6 +271,9 @@ export class SearchOrchestrator {
       headers = await addRecaptchaHeader(headers, this.recaptchaSiteKey, 'generate_answer');
     }
     
+    // P3-002: Check abort after potentially async reCAPTCHA operation
+    this.checkAborted();
+    
     const response = await fetch(`${this.config.backend.url}/api/generate-answer`, {
       method: 'POST',
       headers,
@@ -194,6 +282,8 @@ export class SearchOrchestrator {
         documents: documents.slice(0, 10), // Backend will handle the limit
         systemContext: this.config.context?.systemContext,
       }),
+      // P3-002: Add abort signal to fetch
+      signal: this.abortController?.signal,
     });
 
     if (!response.ok) {
@@ -206,7 +296,7 @@ export class SearchOrchestrator {
   }
 
   /**
-   * Perform a single search query
+   * P3-002: Enhanced perform a single search query with abort checking
    */
   private async performSingleSearch(
     query: string,
@@ -214,6 +304,8 @@ export class SearchOrchestrator {
     indexName: string,
     hitsPerPage: number = 5
   ): Promise<InternalDocSearchHit[]> {
+    this.checkAborted();
+    
     try {
       const response = await algoliaClient.search([{
         indexName,
@@ -225,8 +317,16 @@ export class SearchOrchestrator {
         }
       }]);
 
+      // P3-002: Check abort after Algolia operation
+      this.checkAborted();
+
       return response.results[0]?.hits || [];
     } catch (error) {
+      // P3-002: Handle abort errors specifically
+      if (error instanceof Error && error.message === 'Operation cancelled') {
+        throw error;
+      }
+      
       this.logger.log(`Search failed for query "${query}":`, error);
       return [];
     }
