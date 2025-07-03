@@ -46,9 +46,33 @@
 .DocSearch-Input {
   max-width: none !important;
   width: 100% !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  padding-right: 50px !important; /* Make room for any buttons/icons */
 }
 
-.docusaurus-openai-search .DocSearch-SearchBar {
+/* Ensure the search form container doesn't restrict width */
+.DocSearch-Form {
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* Make sure the input wrapper doesn't have any restrictions */
+.DocSearch-InputWrapper {
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* Ensure the modal is wide enough for long queries */
+.DocSearch-Modal {
+  max-width: 90vw !important;
+}
+
+.DocSearch-SearchBar {
+  max-width: none !important;
   z-index: 9002 !important;
 }
 

@@ -331,20 +331,101 @@ export const DocusaurusAISearch = React.memo(function DocusaurusAISearch({
   useEffect(() => {
     if (isOpen && aiConfig?.enabled !== false) {
       const timer = setTimeout(() => {
-        const searchInput = document.querySelector('.DocSearch-Input') as HTMLInputElement;
+        const originalInput = document.querySelector('.DocSearch-Input') as HTMLInputElement;
         const searchDropdown = document.querySelector('.DocSearch-Dropdown') as HTMLElement;
         
-        // Update search input placeholder if custom text is provided
-        if (searchInput && aiConfig?.ui?.searchInputPlaceholder) {
-          searchInput.placeholder = aiConfig.ui.searchInputPlaceholder;
+        if (!originalInput) return;
+        
+        // Create our own input that looks exactly like DocSearch's
+        const customInput = originalInput.cloneNode(false) as HTMLInputElement;
+        customInput.removeAttribute('maxlength');
+        customInput.removeAttribute('maxLength');
+        customInput.className = originalInput.className;
+        customInput.placeholder = aiConfig?.ui?.searchInputPlaceholder || originalInput.placeholder;
+        
+        // Hide the original input and insert our custom one
+        originalInput.style.display = 'none';
+        originalInput.parentNode?.insertBefore(customInput, originalInput.nextSibling);
+        
+        // Store the full value
+        let fullValue = originalInput.value || '';
+        customInput.value = fullValue;
+        
+        // Sync our input with DocSearch's state
+        const syncToDocSearch = (value: string) => {
+          // Update the hidden original input
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+          if (nativeInputValueSetter) {
+            nativeInputValueSetter.call(originalInput, value);
+          }
+          
+          // Trigger React's onChange
+          const inputEvent = new InputEvent('input', { 
+            bubbles: true,
+            cancelable: true,
+            data: value,
+            inputType: 'insertText'
+          });
+          originalInput.dispatchEvent(inputEvent);
+          
+          // Also trigger change event
+          const changeEvent = new Event('change', { bubbles: true });
+          originalInput.dispatchEvent(changeEvent);
+        };
+        
+        // Handle input events on our custom input
+        customInput.addEventListener('input', (e) => {
+          fullValue = customInput.value;
+          syncToDocSearch(fullValue);
+        });
+        
+        // Handle all other events
+        ['keydown', 'keyup', 'keypress', 'focus', 'blur', 'paste', 'cut'].forEach(eventType => {
+          customInput.addEventListener(eventType, (e) => {
+            // Forward the event to the original input
+            const clonedEvent = new (e.constructor as any)(eventType, {
+              bubbles: e.bubbles,
+              cancelable: e.cancelable,
+              view: (e as any).view,
+              detail: (e as any).detail,
+              key: (e as any).key,
+              code: (e as any).code,
+              keyCode: (e as any).keyCode,
+              which: (e as any).which,
+              altKey: (e as any).altKey,
+              ctrlKey: (e as any).ctrlKey,
+              metaKey: (e as any).metaKey,
+              shiftKey: (e as any).shiftKey,
+              clipboardData: (e as any).clipboardData,
+            });
+            originalInput.dispatchEvent(clonedEvent);
+          });
+        });
+        
+        // Focus our custom input when the modal opens
+        customInput.focus();
+        
+        // Clean up when modal closes
+        const cleanup = () => {
+          customInput.remove();
+          originalInput.style.display = '';
+        };
+        
+        const modalElement = document.querySelector('.DocSearch-Modal');
+        if (modalElement) {
+          const modalObserver = new MutationObserver(() => {
+            if (!document.contains(modalElement)) {
+              cleanup();
+              modalObserver.disconnect();
+            }
+          });
+          modalObserver.observe(modalElement.parentElement || document.body, {
+            childList: true
+          });
         }
         
-        // Remove any maxLength restrictions to allow longer queries
-        if (searchInput) {
-          searchInput.removeAttribute('maxLength');
-          // Also set a very high maxLength as a fallback in case the attribute gets re-added
-          searchInput.maxLength = 9999;
-        }
+        // Now set up the AI button with access to the full query
+        const searchInput = customInput; // Use our custom input for all operations
         
         if (searchInput && searchDropdown) {
           let aiButtonAdded = false;
@@ -451,12 +532,6 @@ export const DocusaurusAISearch = React.memo(function DocusaurusAISearch({
               const hasResults = document.querySelector('.DocSearch-Hit');
               const query = searchInput.value.trim();
               
-              // Ensure maxLength restriction is removed even on new searches
-              if (searchInput.hasAttribute('maxLength') && searchInput.maxLength < 9999) {
-                searchInput.removeAttribute('maxLength');
-                searchInput.maxLength = 9999;
-              }
-              
               if (hasResults && query.length > 0) {
                 addAiButton(query);
               } else if (query.length === 0) {
@@ -481,12 +556,6 @@ export const DocusaurusAISearch = React.memo(function DocusaurusAISearch({
           
           const handleKeyDown = (e: KeyboardEvent) => {
             if (typingTimer) clearTimeout(typingTimer);
-            
-            // Check and remove maxLength restriction on every keydown
-            if (searchInput.hasAttribute('maxLength') && searchInput.maxLength < 9999) {
-              searchInput.removeAttribute('maxLength');
-              searchInput.maxLength = 9999;
-            }
             
             if (e.key === 'Enter' && searchInput.value.trim().length > 0) {
               const hasResults = document.querySelector('.DocSearch-Hit');
