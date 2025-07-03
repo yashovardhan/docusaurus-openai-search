@@ -41,7 +41,7 @@
     "devDependencies": {
         "@docsearch/css": "^3.9.0",
         "@docusaurus/core": "^3.7.0",
-        "@docusaurus/theme-search-algolia": "^3.7.0",
+        "@docusaurus/theme-search-algolia": "^3.8.1",
         "@docusaurus/types": "^3.7.0",
         "@types/react": "^18.3.21",
         "@types/react-dom": "^18.3.7",
