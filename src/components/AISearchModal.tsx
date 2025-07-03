@@ -143,12 +143,6 @@ export function AISearchModal({
   // Week 2 Enhancement: Validation state for confidence indicators
   const [validation, setValidation] = useState<any>(null);
   
-  // Week 3 Enhancement: Query analysis and feedback state
-  const [feedback, setFeedback] = useState<{
-    rating?: 'helpful' | 'somewhat' | 'not-helpful';
-    submitted?: boolean;
-  }>({});
-  
   // P4-002: State for lazy-loaded markdown components
   const [markdownComponentsLoaded, setMarkdownComponentsLoaded] = useState<LazyMarkdownComponents | null>(null);
   const [markdownLoading, setMarkdownLoading] = useState<boolean>(false);
@@ -198,8 +192,7 @@ export function AISearchModal({
     return msConfig;
   }, [config?.features?.multiSource]);
   
-  // Week 6: Conversational memory and follow-up questions state
-  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  // Week 6: Conversational memory state
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
   
@@ -240,41 +233,6 @@ export function AISearchModal({
   const backendUrl = config?.backend?.url;
   // console.log('[AI Search Modal] Backend URL:', backendUrl);
   
-  // Week 3 Enhancement: Feedback submission function
-  const submitFeedback = useCallback(async (rating: 'helpful' | 'somewhat' | 'not-helpful') => {
-    if (feedback.submitted || !answer) return;
-    
-    try {
-      // Set feedback state immediately for UI responsiveness
-      setFeedback({ rating, submitted: true });
-      
-      // Optional: Send feedback to backend if configured
-      if (backendUrl && config?.enableFeedback !== false) {
-        await fetch(`${backendUrl}/api/feedback`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query,
-            rating,
-            queryAnalysis,
-            validation,
-            timestamp: new Date().toISOString()
-          })
-        }).catch(err => {
-          console.warn('Feedback submission failed:', err);
-          // Don't revert UI state on network errors
-        });
-      }
-      
-      // Track feedback if callback provided
-      if (config?.onFeedback) {
-        config.onFeedback(query, rating, queryAnalysis?.type);
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-    }
-  }, [feedback.submitted, answer, backendUrl, config, query, queryAnalysis, validation]);
-
   // P4-001 & P4-002: Memoize Prism theme computation with lazy-loaded components
   const prismTheme = useMemo(() => {
     // P4-002: Return null if markdown components aren't loaded yet
@@ -327,7 +285,7 @@ export function AISearchModal({
     noDocumentsFoundError: config?.ui?.noDocumentsFoundError || DEFAULT_CONFIG.ui.noDocumentsFoundError,
     noSearchResultsError: config?.ui?.noSearchResultsError || DEFAULT_CONFIG.ui.noSearchResultsError,
   }), [config?.ui]);
-
+  
   // P2-001: Enhanced retry handler with proper ref reset and safety checks
   const handleRetry = useCallback(() => {
     // Reset all states
@@ -636,7 +594,6 @@ export function AISearchModal({
             // Set conversational search results
             setAnswer(result.answer);
             setRetrievedContent(result.documents);
-            setFollowUpQuestions(result.followUpQuestions || []);
             
             if (result.sessionId) {
               setSessionId(result.sessionId);
@@ -979,66 +936,7 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
     );
   };
 
-  // Week 6: Handle follow-up question click
-  const handleFollowUpQuestionClick = useCallback((question: string) => {
-    // Replace current query with follow-up question and trigger new search
-    // This would typically be handled by the parent component
-    if (config?.onFollowUpQuestionClick) {
-      config.onFollowUpQuestionClick(question);
-    } else {
-      // Fallback: close current modal and trigger new search
-      onClose();
-      // Note: In a real implementation, you'd need to trigger a new search
-      // This depends on how the parent component manages the search state
-    }
-  }, [config, onClose]);
-
-  // Week 6: Follow-up questions component
-  const FollowUpQuestions: React.FC = () => {
-    if (!followUpQuestions || followUpQuestions.length === 0) {
-      return null;
-    }
-
-    return (
-      <div className="ai-follow-up-section">
-        <h4 className="ai-follow-up-title">Related Questions</h4>
-        <div className="ai-follow-up-questions">
-          {followUpQuestions.map((question, index) => (
-            <button
-              key={index}
-              className="ai-follow-up-question"
-              onClick={() => handleFollowUpQuestionClick(question)}
-              type="button"
-            >
-              <span className="ai-follow-up-icon">💡</span>
-              {question}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Week 6: Conversation history component (for debugging/development)
-  const ConversationHistory: React.FC = () => {
-    if (!isConversationalMemoryEnabled || conversationHistory.length === 0) {
-      return null;
-    }
-
-    return (
-      <div className="ai-conversation-history" style={{ display: 'none' }}>
-        <h4>Conversation History</h4>
-        {conversationHistory.slice(-3).map((turn, index) => (
-          <div key={index} className="ai-history-turn">
-            <div className="ai-history-query">Q: {turn.query}</div>
-            <div className="ai-history-answer">A: {turn.answer.substring(0, 100)}...</div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Updated sources section render function to include follow-up questions
+  // Updated sources section render function
   const renderSources = () => {
     const sourcesSection = (() => {
       if (multiSourceResults && multiSourceResults.sources.length > 0) {
@@ -1106,10 +1004,6 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
     return (
       <>
         {sourcesSection}
-        {/* Week 6: Follow-up questions */}
-        <FollowUpQuestions />
-        {/* Week 6: Conversation history (hidden by default) */}
-        <ConversationHistory />
       </>
     );
   };
@@ -1439,69 +1333,6 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
               
               {/* Stage 2: Enhanced sources section with multi-source support */}
               {renderSources()}
-              
-              {/* Week 3 Enhancement: Query analysis and feedback section */}
-              {answer && !loading && !error && (
-                <div className="ai-feedback-section">
-                  {/* Query analysis display */}
-                  {queryAnalysis && (
-                    <div className="ai-query-analysis">
-                      <div className="ai-analysis-info">
-                        <span className="ai-analysis-label">Query Type:</span>
-                        <span className={`ai-query-type ai-query-type-${queryAnalysis.type}`}>
-                          {queryAnalysis.type?.replace('-', ' ') || 'general'}
-                        </span>
-                        {queryAnalysis.complexity && (
-                          <>
-                            <span className="ai-analysis-separator">•</span>
-                            <span className="ai-complexity">
-                              {queryAnalysis.complexity}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Feedback collection */}
-                  <div className="ai-feedback-container">
-                    <div className="ai-feedback-question">
-                      Was this answer helpful?
-                    </div>
-                    
-                    {feedback.submitted ? (
-                      <div className="ai-feedback-thanks">
-                        <span className="ai-feedback-icon">✓</span>
-                        Thank you for your feedback!
-                      </div>
-                    ) : (
-                      <div className="ai-feedback-buttons">
-                        <button
-                          className="ai-feedback-btn ai-feedback-helpful"
-                          onClick={() => submitFeedback('helpful')}
-                          title="This answer was helpful"
-                        >
-                          👍 Yes
-                        </button>
-                        <button
-                          className="ai-feedback-btn ai-feedback-somewhat"
-                          onClick={() => submitFeedback('somewhat')}
-                          title="This answer was somewhat helpful"
-                        >
-                          👌 Somewhat
-                        </button>
-                        <button
-                          className="ai-feedback-btn ai-feedback-not-helpful"
-                          onClick={() => submitFeedback('not-helpful')}
-                          title="This answer was not helpful"
-                        >
-                          👎 No
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
