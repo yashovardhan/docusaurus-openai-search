@@ -33,6 +33,22 @@ export class AISearchLogger {
   }
   
   /**
+   * Log error (interface compatibility)
+   */
+  error(...args: any[]): void {
+    if (!this.enabled) return;
+    console.error(this.prefix, ...args);
+  }
+  
+  /**
+   * Log warning
+   */
+  warn(...args: any[]): void {
+    if (!this.enabled) return;
+    console.warn(this.prefix, ...args);
+  }
+  
+  /**
    * Enable or disable logging
    */
   setEnabled(enabled: boolean): void {

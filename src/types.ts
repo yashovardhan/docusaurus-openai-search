@@ -90,6 +90,92 @@ export interface RecaptchaOptions {
 }
 
 /**
+ * Stage 2: Multi-source search configuration
+ */
+export interface GitHubOptions {
+  /** GitHub repository in format "owner/repo" */
+  repo: string;
+  /** Search types to include (default: ['issues', 'discussions']) */
+  searchTypes?: ('issues' | 'discussions' | 'code')[];
+  /** Maximum number of results to fetch from GitHub (default: 5) */
+  maxResults?: number;
+}
+
+export interface BlogOptions {
+  /** Base URL of the blog to search */
+  url: string;
+  /** Blog platform type for specialized parsing */
+  platform?: 'wordpress' | 'ghost' | 'medium' | 'generic';
+  /** Maximum number of blog posts to include (default: 3) */
+  maxResults?: number;
+}
+
+export interface ChangelogOptions {
+  /** URL of the changelog file or API endpoint */
+  url: string;
+  /** Format of the changelog (default: 'markdown') */
+  format?: 'markdown' | 'json' | 'rss';
+  /** Maximum number of changelog entries to include (default: 2) */
+  maxResults?: number;
+}
+
+export interface MultiSourceOptions {
+  /** Enable multi-source search functionality */
+  enabled?: boolean;
+  /** GitHub integration configuration */
+  github?: GitHubOptions;
+  /** Blog search configuration */
+  blog?: BlogOptions;
+  /** Changelog search configuration */
+  changelog?: ChangelogOptions;
+  /** Weight for aggregating results from different sources */
+  aggregationWeights?: {
+    documentation?: number;
+    github?: number;
+    blog?: number;
+    changelog?: number;
+  };
+}
+
+/**
+ * Stage 3: Fine-tuned model enhancement configuration
+ */
+export interface EnhancementOptions {
+  /** Enable recursive document enhancement with fine-tuned model */
+  recursiveSearch?: boolean;
+  /** Fine-tuned model ID for enhanced context gathering */
+  fineTunedModelId?: string;
+  /** Maximum recursion depth (default: 2) */
+  maxDepth?: number;
+  /** Timeout for recursive operations in milliseconds (default: 5000) */
+  timeout?: number;
+}
+
+/**
+ * Stage 2: Advanced AI features configuration
+ */
+export interface AIFeaturesOptions {
+  /** Enable query understanding and intelligent processing */
+  queryUnderstanding?: boolean;
+  /** Multi-source search configuration */
+  multiSource?: MultiSourceOptions;
+  /** Enable intelligent result ranking */
+  intelligentRanking?: boolean;
+  /** Enable conversational memory between searches */
+  conversationalMemory?: {
+    enabled?: boolean;
+    /** Session duration in seconds (default: 3600) */
+    sessionDuration?: number;
+  };
+  /** Enable follow-up question suggestions */
+  followUpSuggestions?: boolean;
+  /** Enable answer quality scoring */
+  qualityScoring?: boolean;
+  /** Stage 3: Fine-tuned model enhancement */
+  enhancement?: EnhancementOptions;
+}
+
+/**
  * Docusaurus AI Search configuration
  */
 export interface DocusaurusAISearchConfig {
@@ -122,6 +208,22 @@ export interface DocusaurusAISearchConfig {
   
   /** reCAPTCHA configuration for bot protection */
   recaptcha?: RecaptchaOptions;
+  
+  /** Stage 2: Advanced AI features configuration */
+  features?: AIFeaturesOptions;
+  
+  // Optional: Custom search button rendering
+  useCustomSearchButton?: boolean;
+  
+  // Optional: Callback for user feedback on answers
+  onFeedback?: (query: string, rating: string, queryType?: string) => void;
+  enableFeedback?: boolean;
+  
+  // Optional: Callback when follow-up question is clicked
+  onFollowUpQuestionClick?: (question: string) => void;
+  
+  // Optional: System context for backend (used in prompts)
+  systemContext?: string;
 }
 
 /**
@@ -222,6 +324,62 @@ export interface AISearchBarProps {
     modal?: Record<string, any>;
   };
   aiConfig?: DocusaurusAISearchConfig;
+}
+
+/**
+ * Week 5-6: Multi-source search result type
+ */
+export interface MultiSourceResult {
+  source: 'documentation' | 'github' | 'blog' | 'changelog';
+  title: string;
+  url: string;
+  content: string;
+  metadata: {
+    weight: number;
+    timestamp?: string;
+    author?: string;
+    type?: string;
+  };
+}
+
+/**
+ * Week 5-6: Aggregated search result with multiple sources
+ */
+export interface AggregatedSearchResult {
+  answer: string;
+  sources: MultiSourceResult[];
+  aggregationMetrics: {
+    totalSources: number;
+    sourceBreakdown: Record<string, number>;
+    confidenceScore: number;
+  };
+}
+
+/**
+ * Week 6: Conversation turn for memory
+ */
+export interface ConversationTurn {
+  query: string;
+  answer: string;
+  timestamp: Date;
+  queryAnalysis?: {
+    type?: string;
+    intent?: string;
+    complexity?: string;
+  };
+  sources?: MultiSourceResult[];
+  validation?: any;
+}
+
+/**
+ * Week 6: Conversation session
+ */
+export interface ConversationSession {
+  sessionId: string;
+  turns: ConversationTurn[];
+  createdAt: Date;
+  lastActiveAt: Date;
+  context: string;
 }
 
 // Global type augmentations

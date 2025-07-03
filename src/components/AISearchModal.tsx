@@ -5,7 +5,10 @@ import {
   SearchOrchestrator,
   ResponseCache,
   type SearchStep,
-  type DocumentContent
+  type DocumentContent,
+  type MultiSourceResult,
+  type AggregatedSearchResult,
+  type ConversationTurn
 } from '../utils';
 import { 
   ModalCleanupUtils, 
@@ -128,10 +131,23 @@ export function AISearchModal({
   const [searchStep, setSearchStep] = useState<SearchStep | null>(null);
   const [fetchFailed, setFetchFailed] = useState<boolean>(false);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
-  const [queryAnalysis, setQueryAnalysis] = useState<string>('');
+  const [queryAnalysis, setQueryAnalysis] = useState<{
+    type?: string;
+    intent?: string;
+    complexity?: string;
+  } | null>(null);
   const [aiCallCount, setAiCallCount] = useState<number>(0);
   const [isFromCache, setIsFromCache] = useState<boolean>(false);
   const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
+  
+  // Week 2 Enhancement: Validation state for confidence indicators
+  const [validation, setValidation] = useState<any>(null);
+  
+  // Week 3 Enhancement: Query analysis and feedback state
+  const [feedback, setFeedback] = useState<{
+    rating?: 'helpful' | 'somewhat' | 'not-helpful';
+    submitted?: boolean;
+  }>({});
   
   // P4-002: State for lazy-loaded markdown components
   const [markdownComponentsLoaded, setMarkdownComponentsLoaded] = useState<LazyMarkdownComponents | null>(null);
@@ -155,6 +171,27 @@ export function AISearchModal({
   // P3-001: Error boundary hook for enhanced error handling
   const { createErrorHandler } = useErrorBoundary();
 
+  // Stage 2: Multi-source search state
+  const [multiSourceResults, setMultiSourceResults] = useState<AggregatedSearchResult | null>(null);
+  const [isMultiSourceEnabled, setIsMultiSourceEnabled] = useState<boolean>(false);
+  const [multiSourceConfig, setMultiSourceConfig] = useState<{
+    github?: { repository: string; };
+    blog?: { url: string; };
+    changelog?: { url: string; };
+  } | null>(null);
+  
+  // Week 6: Conversational memory and follow-up questions state
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
+  
+  // Stage 3: Fine-tuned model enhancement state
+  const [enhancement, setEnhancement] = useState<any>(null);
+  const [isConversationalMemoryEnabled, setIsConversationalMemoryEnabled] = useState<boolean>(false);
+  
+  // Week 6: Query Intelligence
+  const [searchTime] = useState(Date.now());
+  
   // Initialize logger with enableLogging config
   useEffect(() => {
     createLogger(config?.enableLogging || false);
@@ -178,6 +215,41 @@ export function AISearchModal({
 
   // Get the backend URL from config
   const backendUrl = config?.backend?.url;
+  
+  // Week 3 Enhancement: Feedback submission function
+  const submitFeedback = useCallback(async (rating: 'helpful' | 'somewhat' | 'not-helpful') => {
+    if (feedback.submitted || !answer) return;
+    
+    try {
+      // Set feedback state immediately for UI responsiveness
+      setFeedback({ rating, submitted: true });
+      
+      // Optional: Send feedback to backend if configured
+      if (backendUrl && config?.enableFeedback !== false) {
+        await fetch(`${backendUrl}/api/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            rating,
+            queryAnalysis,
+            validation,
+            timestamp: new Date().toISOString()
+          })
+        }).catch(err => {
+          console.warn('Feedback submission failed:', err);
+          // Don't revert UI state on network errors
+        });
+      }
+      
+      // Track feedback if callback provided
+      if (config?.onFeedback) {
+        config.onFeedback(query, rating, queryAnalysis?.type);
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    }
+  }, [feedback.submitted, answer, backendUrl, config, query, queryAnalysis, validation]);
 
   // P4-001 & P4-002: Memoize Prism theme computation with lazy-loaded components
   const prismTheme = useMemo(() => {
@@ -302,7 +374,7 @@ export function AISearchModal({
           { setter: setSearchStep, initialValue: null },
           { setter: setFetchFailed, initialValue: false },
           { setter: setIsRetrying, initialValue: false },
-          { setter: setQueryAnalysis, initialValue: '' },
+          { setter: setQueryAnalysis, initialValue: null },
           { setter: setAiCallCount, initialValue: 0 },
           { setter: setIsFromCache, initialValue: false },
           { setter: setIsGeneratingAnswer, initialValue: false }
@@ -393,7 +465,60 @@ export function AISearchModal({
     }
   }, [config?.enableLogging]);
 
-  // P3-001 & P3-002: Enhanced document content retrieval with comprehensive error handling and race condition protection
+  // Stage 2: Check if multi-source search is enabled in config
+  useEffect(() => {
+    if (config?.features?.multiSource) {
+      setIsMultiSourceEnabled(true);
+      
+      // Extract multi-source configuration
+      const msConfig: any = {};
+      if (config.features.multiSource.github?.repo) {
+        msConfig.github = {
+          repository: config.features.multiSource.github.repo
+        };
+      }
+      if (config.features.multiSource.blog?.url) {
+        msConfig.blog = { url: config.features.multiSource.blog.url };
+      }
+      if (config.features.multiSource.changelog?.url) {
+        msConfig.changelog = { url: config.features.multiSource.changelog.url };
+      }
+      
+      setMultiSourceConfig(msConfig);
+    }
+  }, [config?.features?.multiSource]);
+
+  // Week 6: Check if conversational memory is enabled
+  useEffect(() => {
+    if (config?.features?.conversationalMemory?.enabled) {
+      setIsConversationalMemoryEnabled(true);
+    }
+  }, [config?.features?.conversationalMemory]);
+
+  // Week 6: Get session ID from orchestrator when it's ready
+  useEffect(() => {
+    if (orchestratorRef.current && isConversationalMemoryEnabled) {
+      const sessionId = orchestratorRef.current.getSessionId();
+      if (sessionId) {
+        setSessionId(sessionId);
+      }
+    }
+  }, [orchestratorRef.current, isConversationalMemoryEnabled]);
+
+  // Week 6: Load conversation history when session is available
+  useEffect(() => {
+    if (sessionId && orchestratorRef.current && isConversationalMemoryEnabled) {
+      orchestratorRef.current.getConversationHistory()
+        .then(history => {
+          setConversationHistory(history);
+        })
+        .catch(error => {
+          console.error('Failed to load conversation history:', error);
+        });
+    }
+  }, [sessionId, isConversationalMemoryEnabled]);
+
+  // Stage 2 & Week 6: Enhanced fetchContent function with multi-source and conversational support
   useEffect(() => {
     const errorHandler = createErrorHandler('AISearchModal-fetchContent');
     let isCancelled = false; // P3-002: Race condition protection
@@ -436,7 +561,9 @@ export function AISearchModal({
               // Full cache hit - we have everything
               setAnswer(cached.response);
               setRetrievedContent(cached.documents || []);
-              setQueryAnalysis(cached.queryAnalysis || '');
+              if (cached.queryAnalysis && typeof cached.queryAnalysis === 'object') {
+                setQueryAnalysis(cached.queryAnalysis);
+              }
               setIsFromCache(true);
               setLoading(false);
               
@@ -451,25 +578,107 @@ export function AISearchModal({
 
         // Use AI search with the new orchestrator
         if (orchestratorRef.current && algoliaConfig) {
-          const result = await orchestratorRef.current.performAISearch(
-            query,
-            algoliaConfig.searchClient,
-            algoliaConfig.indexName
-          );
-
-          // P3-002: Check for race condition after async operation
-          if (isCancelled) return;
-
-          if (result.documents.length === 0) {
-            throw new Error(modalTexts.noDocumentsFoundError);
+          let result: any;
+          
+          // Week 6: Use conversational search if enabled
+          if (isConversationalMemoryEnabled) {
+            result = await orchestratorRef.current.performConversationalAISearch(
+              query,
+              algoliaConfig.searchClient,
+              algoliaConfig.indexName
+            );
+            
+            // P3-002: Check for race condition after async operation
+            if (isCancelled) return;
+            
+            // Set conversational search results
+            setAnswer(result.answer);
+            setRetrievedContent(result.documents);
+            setFollowUpQuestions(result.followUpQuestions || []);
+            
+            if (result.sessionId) {
+              setSessionId(result.sessionId);
+            }
+            
+            // Set validation and query analysis data
+            if (result.validation) {
+              setValidation(result.validation);
+            }
+            if (result.queryAnalysis) {
+              setQueryAnalysis(result.queryAnalysis);
+            }
+            
+            // Stage 3: Set enhancement data
+            if (result.enhancement) {
+              setEnhancement(result.enhancement);
+            }
           }
+          // Stage 2: Use multi-source search if enabled and conversational is not
+          else if (isMultiSourceEnabled && multiSourceConfig) {
+            result = await orchestratorRef.current.performMultiSourceAISearch(
+              query,
+              algoliaConfig.searchClient,
+              algoliaConfig.indexName,
+              multiSourceConfig
+            );
+            
+            // P3-002: Check for race condition after async operation
+            if (isCancelled) return;
+            
+            // Set multi-source results
+            setMultiSourceResults(result);
+            setAnswer(result.answer);
+            
+            // Convert multi-source results to DocumentContent for backward compatibility
+            const documents = result.sources.map((source: MultiSourceResult) => ({
+              url: source.url,
+              title: source.title,
+              content: source.content
+            }));
+            
+            setRetrievedContent(documents);
+            
+            // Set validation data
+            if (result.validation) {
+              setValidation(result.validation);
+            }
+          } else {
+            // Use traditional single-source search
+            result = await orchestratorRef.current.performAISearch(
+              query,
+              algoliaConfig.searchClient,
+              algoliaConfig.indexName
+            );
 
-          setRetrievedContent(result.documents);
-          setAnswer(result.answer);
+            // P3-002: Check for race condition after async operation
+            if (isCancelled) return;
+
+            if (result.documents.length === 0) {
+              throw new Error(modalTexts.noDocumentsFoundError);
+            }
+
+            setRetrievedContent(result.documents);
+            setAnswer(result.answer);
+            
+            // Week 2 Enhancement: Capture validation data from backend
+            if (result.validation) {
+              setValidation(result.validation);
+            }
+            
+            // Week 3 Enhancement: Capture query analysis data
+            if (result.queryAnalysis) {
+              setQueryAnalysis(result.queryAnalysis);
+            }
+            
+            // Stage 3: Capture enhancement data
+            if (result.enhancement) {
+              setEnhancement(result.enhancement);
+            }
+          }
           
           // Cache the complete response if caching is enabled
           if (enableCaching) {
-            cache.set(query, result.answer, '', result.documents);
+            cache.set(query, result.answer, '', result.documents || result.sources);
           }
           
           // Track successful AI query
@@ -568,7 +777,7 @@ export function AISearchModal({
         orchestratorRef.current.cancelAllOperations();
       }
     };
-  }, [query, searchResults.length, algoliaConfig?.indexName]); // Minimal dependencies
+  }, [query, searchResults.length, algoliaConfig?.indexName, isMultiSourceEnabled, multiSourceConfig, isConversationalMemoryEnabled]);
 
   // P3-001: Enhanced markdown response handling with error protection
   useEffect(() => {
@@ -651,6 +860,180 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
       'ai-modal-content',
       themeConfig?.hideableSidebar ? 'hideable-sidebar' : '',
     ].filter(Boolean).join(' ')
+  };
+
+  // Stage 2: Source type indicator component
+  const SourceTypeIndicator: React.FC<{ source: MultiSourceResult }> = ({ source }) => {
+    const getSourceIcon = (sourceType: string) => {
+      switch (sourceType) {
+        case 'documentation':
+          return '📚';
+        case 'github':
+          return '🐙';
+        case 'blog':
+          return '📝';
+        case 'changelog':
+          return '📋';
+        default:
+          return '📄';
+      }
+    };
+
+    const getSourceLabel = (sourceType: string) => {
+      switch (sourceType) {
+        case 'documentation':
+          return 'Documentation';
+        case 'github':
+          return 'GitHub';
+        case 'blog':
+          return 'Blog';
+        case 'changelog':
+          return 'Changelog';
+        default:
+          return 'Unknown';
+      }
+    };
+
+    return (
+      <span className={`ai-search-source-indicator ai-search-source-${source.source}`}>
+        {getSourceIcon(source.source)} {getSourceLabel(source.source)}
+      </span>
+    );
+  };
+
+  // Week 6: Handle follow-up question click
+  const handleFollowUpQuestionClick = useCallback((question: string) => {
+    // Replace current query with follow-up question and trigger new search
+    // This would typically be handled by the parent component
+    if (config?.onFollowUpQuestionClick) {
+      config.onFollowUpQuestionClick(question);
+    } else {
+      // Fallback: close current modal and trigger new search
+      onClose();
+      // Note: In a real implementation, you'd need to trigger a new search
+      // This depends on how the parent component manages the search state
+    }
+  }, [config, onClose]);
+
+  // Week 6: Follow-up questions component
+  const FollowUpQuestions: React.FC = () => {
+    if (!followUpQuestions || followUpQuestions.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="ai-follow-up-section">
+        <h4 className="ai-follow-up-title">Related Questions</h4>
+        <div className="ai-follow-up-questions">
+          {followUpQuestions.map((question, index) => (
+            <button
+              key={index}
+              className="ai-follow-up-question"
+              onClick={() => handleFollowUpQuestionClick(question)}
+              type="button"
+            >
+              <span className="ai-follow-up-icon">💡</span>
+              {question}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Week 6: Conversation history component (for debugging/development)
+  const ConversationHistory: React.FC = () => {
+    if (!isConversationalMemoryEnabled || conversationHistory.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="ai-conversation-history" style={{ display: 'none' }}>
+        <h4>Conversation History</h4>
+        {conversationHistory.slice(-3).map((turn, index) => (
+          <div key={index} className="ai-history-turn">
+            <div className="ai-history-query">Q: {turn.query}</div>
+            <div className="ai-history-answer">A: {turn.answer.substring(0, 100)}...</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Updated sources section render function to include follow-up questions
+  const renderSources = () => {
+    const sourcesSection = (() => {
+      if (multiSourceResults && multiSourceResults.sources.length > 0) {
+        return (
+          <div className="ai-search-sources-section">
+            <h3 className="ai-search-sources-title">Sources</h3>
+            <div className="ai-search-aggregation-metrics">
+              <span className="ai-search-total-sources">
+                {multiSourceResults.aggregationMetrics.totalSources} sources found
+              </span>
+              <span className="ai-search-confidence-score">
+                Confidence: {multiSourceResults.aggregationMetrics.confidenceScore}%
+              </span>
+            </div>
+            <div className="ai-search-sources-list">
+              {multiSourceResults.sources.slice(0, 8).map((source, idx) => (
+                <div key={idx} className="ai-search-source-item">
+                  <SourceTypeIndicator source={source} />
+                  <a href={source.url} target="_blank" rel="noopener noreferrer">
+                    {source.title}
+                  </a>
+                  {source.metadata.author && (
+                    <span className="ai-search-source-author">by {source.metadata.author}</span>
+                  )}
+                  {source.metadata.timestamp && (
+                    <span className="ai-search-source-timestamp">
+                      {new Date(source.metadata.timestamp).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      
+      // Fallback to traditional sources display
+      if (retrievedContent.length > 0) {
+        return (
+          <div className="ai-search-sources-section">
+            <h3 className="ai-search-sources-title">Sources</h3>
+            <div className="ai-search-sources-list">
+              {retrievedContent.slice(0, 5).map((doc, idx) => (
+                <div key={idx} className="ai-search-source-item">
+                  <SourceTypeIndicator source={{
+                    source: 'documentation',
+                    title: doc.title,
+                    url: doc.url,
+                    content: doc.content,
+                    metadata: { weight: 0.5 }
+                  }} />
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                    {doc.title}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      
+      return null;
+    })();
+
+    return (
+      <>
+        {sourcesSection}
+        {/* Week 6: Follow-up questions */}
+        <FollowUpQuestions />
+        {/* Week 6: Conversation history (hidden by default) */}
+        <ConversationHistory />
+      </>
+    );
   };
 
   return (
@@ -779,66 +1162,261 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
             </div>
           ) : (
             <div className="ai-answer">
-              <div className="ai-response">
-                <div className="ai-response-text markdown-body" ref={markdownRef}>
-                  {markdownComponentsLoaded ? (
-                    <markdownComponentsLoaded.ReactMarkdown 
-                      remarkPlugins={[markdownComponentsLoaded.remarkGfm]}
-                      rehypePlugins={[markdownComponentsLoaded.rehypeRaw]}
-                      components={{
-                        // Override pre rendering to avoid nesting
-                        // @ts-ignore - The type definition for pre component in ReactMarkdown is complex
-                        pre: ({ children }) => children,
-                        
-                        // @ts-ignore - The type definition for code component in ReactMarkdown is complex
-                        code: (codeProps: any) => {
-                          const { className, children } = codeProps;
-                          // Check if this is a code block or inline code
-                          const match = /language-(\w+)/.exec(className || '');
-                          
-                          // If no language is specified, render as inline code
-                          if (!match) {
-                            return <code className={className}>{children}</code>;
-                          }
-                          
-                          const language = match[1];
-                          const code = String(children).replace(/\n$/, '');
-                          
-                          // P4-001 & P4-002: Use memoized theme with lazy-loaded components
-                          const codeTheme = prismTheme;
-
-                          return (
-                            <markdownComponentsLoaded.Highlight 
-                              theme={codeTheme} 
-                              code={code} 
-                              language={language}
-                            >
-                              {({ className, style, tokens, getLineProps, getTokenProps }: any) => (
-                                <pre className={className} style={style}>
-                                  {tokens.map((line: any, i: number) => (
-                                    <div key={i} {...getLineProps({ line })}>
-                                      {line.map((token: any, key: number) => (
-                                        <span key={key} {...getTokenProps({ token })} />
-                                      ))}
-                                    </div>
-                                  ))}
-                                </pre>
-                              )}
-                            </markdownComponentsLoaded.Highlight>
-                          );
-                        }
-                      }}
-                    >
-                      {formattedAnswer}
-                    </markdownComponentsLoaded.ReactMarkdown>
-                  ) : (
-                    <div className="ai-loading-markdown">
-                      <div className="ai-loading-spinner"></div>
-                      <p>Loading markdown renderer...</p>
+              {/* Week 2 Enhancement: Confidence indicators and validation info */}
+              {validation && (
+                <div className="ai-validation-section">
+                  {validation.confidence && (
+                    <div className={`ai-confidence ai-confidence-${validation.confidence.toLowerCase()}`}>
+                      <span className="ai-confidence-label">Confidence:</span>
+                      <span className="ai-confidence-value">{validation.confidence}</span>
+                    </div>
+                  )}
+                  
+                  {validation.qualityMetrics && (
+                    <div className="ai-quality-indicators">
+                      {validation.qualityMetrics.hasCodeExamples && (
+                        <span className="ai-quality-badge ai-has-code">
+                          <span className="ai-badge-icon">💻</span>
+                          Code Examples
+                        </span>
+                      )}
+                      {validation.qualityMetrics.hasStepByStep && (
+                        <span className="ai-quality-badge ai-has-steps">
+                          <span className="ai-badge-icon">📋</span>
+                          Step-by-Step
+                        </span>
+                      )}
+                      {validation.hasSources && (
+                        <span className="ai-quality-badge ai-has-sources">
+                          <span className="ai-badge-icon">🔗</span>
+                          Sources Cited
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Stage 3: Enhancement indicators */}
+                  {enhancement && (
+                    <div className="ai-enhancement-indicators">
+                      {enhancement.fineTunedModelUsed && (
+                        <span className="ai-enhancement-badge ai-finetuned-model">
+                          <span className="ai-badge-icon">🧠</span>
+                          Fine-Tuned Model
+                        </span>
+                      )}
+                      {enhancement.recursiveEnhanced && (
+                        <span className="ai-enhancement-badge ai-recursive-enhanced">
+                          <span className="ai-badge-icon">🔄</span>
+                          Recursively Enhanced
+                        </span>
+                      )}
+                      {enhancement.documentsAnalyzed && enhancement.documentsAnalyzed > 0 && (
+                        <span className="ai-enhancement-badge ai-docs-analyzed">
+                          <span className="ai-badge-icon">📚</span>
+                          {enhancement.documentsAnalyzed} Documents Analyzed
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
+              )}
+              
+              <div className="ai-response">
+                {validation?.isNotFound ? (
+                  <div className="ai-not-found">
+                    <div className="alert alert--info">
+                      <div className="ai-response-text markdown-body" ref={markdownRef}>
+                        {markdownComponentsLoaded ? (
+                          <markdownComponentsLoaded.ReactMarkdown 
+                            remarkPlugins={[markdownComponentsLoaded.remarkGfm]}
+                            rehypePlugins={[markdownComponentsLoaded.rehypeRaw]}
+                            components={{
+                              // Override pre rendering to avoid nesting
+                              // @ts-ignore - The type definition for pre component in ReactMarkdown is complex
+                              pre: ({ children }) => children,
+                              
+                              // @ts-ignore - The type definition for code component in ReactMarkdown is complex
+                              code: (codeProps: any) => {
+                                const { className, children } = codeProps;
+                                // Check if this is a code block or inline code
+                                const match = /language-(\w+)/.exec(className || '');
+                                
+                                // If no language is specified, render as inline code
+                                if (!match) {
+                                  return <code className={className}>{children}</code>;
+                                }
+                                
+                                const language = match[1];
+                                const code = String(children).replace(/\n$/, '');
+                                
+                                // P4-001 & P4-002: Use memoized theme with lazy-loaded components
+                                const codeTheme = prismTheme;
+
+                                return (
+                                  <markdownComponentsLoaded.Highlight 
+                                    theme={codeTheme} 
+                                    code={code} 
+                                    language={language}
+                                  >
+                                    {({ className, style, tokens, getLineProps, getTokenProps }: any) => (
+                                      <pre className={className} style={style}>
+                                        {tokens.map((line: any, i: number) => (
+                                          <div key={i} {...getLineProps({ line })}>
+                                            {line.map((token: any, key: number) => (
+                                              <span key={key} {...getTokenProps({ token })} />
+                                            ))}
+                                          </div>
+                                        ))}
+                                      </pre>
+                                    )}
+                                  </markdownComponentsLoaded.Highlight>
+                                );
+                              }
+                            }}
+                          >
+                            {formattedAnswer}
+                          </markdownComponentsLoaded.ReactMarkdown>
+                        ) : (
+                          <div className="ai-loading-markdown">
+                            <div className="ai-loading-spinner"></div>
+                            <p>Loading markdown renderer...</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {validation?.isNotFound && (
+                      <p className="ai-help-text">
+                        Try rephrasing your question or browse the documentation manually.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="ai-response-text markdown-body" ref={markdownRef}>
+                    {markdownComponentsLoaded ? (
+                      <markdownComponentsLoaded.ReactMarkdown 
+                        remarkPlugins={[markdownComponentsLoaded.remarkGfm]}
+                        rehypePlugins={[markdownComponentsLoaded.rehypeRaw]}
+                        components={{
+                          // Override pre rendering to avoid nesting
+                          // @ts-ignore - The type definition for pre component in ReactMarkdown is complex
+                          pre: ({ children }) => children,
+                          
+                          // @ts-ignore - The type definition for code component in ReactMarkdown is complex
+                          code: (codeProps: any) => {
+                            const { className, children } = codeProps;
+                            // Check if this is a code block or inline code
+                            const match = /language-(\w+)/.exec(className || '');
+                            
+                            // If no language is specified, render as inline code
+                            if (!match) {
+                              return <code className={className}>{children}</code>;
+                            }
+                            
+                            const language = match[1];
+                            const code = String(children).replace(/\n$/, '');
+                            
+                            // P4-001 & P4-002: Use memoized theme with lazy-loaded components
+                            const codeTheme = prismTheme;
+
+                            return (
+                              <markdownComponentsLoaded.Highlight 
+                                theme={codeTheme} 
+                                code={code} 
+                                language={language}
+                              >
+                                {({ className, style, tokens, getLineProps, getTokenProps }: any) => (
+                                  <pre className={className} style={style}>
+                                    {tokens.map((line: any, i: number) => (
+                                      <div key={i} {...getLineProps({ line })}>
+                                        {line.map((token: any, key: number) => (
+                                          <span key={key} {...getTokenProps({ token })} />
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </pre>
+                                )}
+                              </markdownComponentsLoaded.Highlight>
+                            );
+                          }
+                        }}
+                      >
+                        {formattedAnswer}
+                      </markdownComponentsLoaded.ReactMarkdown>
+                    ) : (
+                      <div className="ai-loading-markdown">
+                        <div className="ai-loading-spinner"></div>
+                        <p>Loading markdown renderer...</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+              
+              {/* Stage 2: Enhanced sources section with multi-source support */}
+              {renderSources()}
+              
+              {/* Week 3 Enhancement: Query analysis and feedback section */}
+              {answer && !loading && !error && (
+                <div className="ai-feedback-section">
+                  {/* Query analysis display */}
+                  {queryAnalysis && (
+                    <div className="ai-query-analysis">
+                      <div className="ai-analysis-info">
+                        <span className="ai-analysis-label">Query Type:</span>
+                        <span className={`ai-query-type ai-query-type-${queryAnalysis.type}`}>
+                          {queryAnalysis.type?.replace('-', ' ') || 'general'}
+                        </span>
+                        {queryAnalysis.complexity && (
+                          <>
+                            <span className="ai-analysis-separator">•</span>
+                            <span className="ai-complexity">
+                              {queryAnalysis.complexity}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Feedback collection */}
+                  <div className="ai-feedback-container">
+                    <div className="ai-feedback-question">
+                      Was this answer helpful?
+                    </div>
+                    
+                    {feedback.submitted ? (
+                      <div className="ai-feedback-thanks">
+                        <span className="ai-feedback-icon">✓</span>
+                        Thank you for your feedback!
+                      </div>
+                    ) : (
+                      <div className="ai-feedback-buttons">
+                        <button
+                          className="ai-feedback-btn ai-feedback-helpful"
+                          onClick={() => submitFeedback('helpful')}
+                          title="This answer was helpful"
+                        >
+                          👍 Yes
+                        </button>
+                        <button
+                          className="ai-feedback-btn ai-feedback-somewhat"
+                          onClick={() => submitFeedback('somewhat')}
+                          title="This answer was somewhat helpful"
+                        >
+                          👌 Somewhat
+                        </button>
+                        <button
+                          className="ai-feedback-btn ai-feedback-not-helpful"
+                          onClick={() => submitFeedback('not-helpful')}
+                          title="This answer was not helpful"
+                        >
+                          👎 No
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

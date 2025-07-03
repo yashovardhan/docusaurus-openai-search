@@ -548,4 +548,55 @@ MIT
 
 ## Credits
 
-Built on top of Docusaurus and Algolia DocSearch. 
+Built on top of Docusaurus and Algolia DocSearch.
+
+## Configuration Options
+
+### Backend Environment Variables
+
+Your backend service needs these environment variables:
+
+```bash
+# Required
+OPENAI_API_KEY=your-openai-api-key
+ALLOWED_DOMAINS=https://your-site.com,http://localhost:3000
+
+# Optional
+GITHUB_TOKEN=your-github-pat  # For GitHub issues/discussions search
+RECAPTCHA_SECRET_KEY=your-key  # For bot protection
+RATE_LIMIT=30  # Requests per minute
+```
+
+### Frontend Configuration
+
+Configure the plugin in your `docusaurus.config.js`:
+
+```js
+module.exports = {
+  themeConfig: {
+    algolia: {
+      // Your existing Algolia config
+    },
+    aiSearch: {
+      backend: {
+        url: 'https://your-backend-service.com'
+      },
+      features: {
+        multiSource: {
+          enabled: true,
+          github: {
+            repo: 'owner/repository-name',  // GitHub repo to search
+            // Note: GitHub token is configured in backend for security
+          }
+        }
+      }
+    }
+  }
+};
+```
+
+### Security Note on GitHub Integration
+
+For security reasons, the GitHub Personal Access Token must be configured as an environment variable (`GITHUB_TOKEN`) in your backend service, not in the frontend configuration. This prevents the token from being exposed in client-side code.
+
+## Features 
