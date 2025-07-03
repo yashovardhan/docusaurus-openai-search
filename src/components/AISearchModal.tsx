@@ -173,12 +173,30 @@ export function AISearchModal({
 
   // Stage 2: Multi-source search state
   const [multiSourceResults, setMultiSourceResults] = useState<AggregatedSearchResult | null>(null);
-  const [isMultiSourceEnabled, setIsMultiSourceEnabled] = useState<boolean>(false);
-  const [multiSourceConfig, setMultiSourceConfig] = useState<{
-    github?: { repository: string; };
-    blog?: { url: string; };
-    changelog?: { url: string; };
-  } | null>(null);
+  
+  // Use useMemo to ensure these values are stable and don't change after mount
+  const isMultiSourceEnabled = useMemo(() => 
+    !!config?.features?.multiSource, 
+    [config?.features?.multiSource]
+  );
+  
+  const multiSourceConfig = useMemo(() => {
+    if (!config?.features?.multiSource) return null;
+    
+    const msConfig: any = {};
+    if (config.features.multiSource.github?.repo) {
+      msConfig.github = {
+        repository: config.features.multiSource.github.repo
+      };
+    }
+    if (config.features.multiSource.blog?.url) {
+      msConfig.blog = { url: config.features.multiSource.blog.url };
+    }
+    if (config.features.multiSource.changelog?.url) {
+      msConfig.changelog = { url: config.features.multiSource.changelog.url };
+    }
+    return msConfig;
+  }, [config?.features?.multiSource]);
   
   // Week 6: Conversational memory and follow-up questions state
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
@@ -187,7 +205,12 @@ export function AISearchModal({
   
   // Stage 3: Fine-tuned model enhancement state
   const [enhancement, setEnhancement] = useState<any>(null);
-  const [isConversationalMemoryEnabled, setIsConversationalMemoryEnabled] = useState<boolean>(false);
+  
+  // Use useMemo for conversational memory enabled
+  const isConversationalMemoryEnabled = useMemo(() => 
+    !!config?.features?.conversationalMemory?.enabled,
+    [config?.features?.conversationalMemory?.enabled]
+  );
   
   // Week 6: Query Intelligence
   const [searchTime] = useState(Date.now());
@@ -215,6 +238,7 @@ export function AISearchModal({
 
   // Get the backend URL from config
   const backendUrl = config?.backend?.url;
+  // console.log('[AI Search Modal] Backend URL:', backendUrl);
   
   // Week 3 Enhancement: Feedback submission function
   const submitFeedback = useCallback(async (rating: 'helpful' | 'somewhat' | 'not-helpful') => {
@@ -328,7 +352,15 @@ export function AISearchModal({
         if (typeof orchestratorRef.current.cancelAllOperations === 'function') {
           orchestratorRef.current.cancelAllOperations();
         }
+        // Recreate orchestrator to ensure clean state
         orchestratorRef.current = null;
+        if (backendUrl && config) {
+          orchestratorRef.current = new SearchOrchestrator(
+            config,
+            (step) => setSearchStep(step)
+          );
+          console.log('[AI Search Modal] Orchestrator recreated for retry');
+        }
       }
     } catch (error) {
       console.error('[AI Search Modal] Error during retry ref reset:', error);
@@ -397,22 +429,25 @@ export function AISearchModal({
       answerGenerationStartedRef.current = false;
     }
     
-    // Initialize orchestrator with safety checks
+    // Initialize orchestrator with safety checks - only create if it doesn't exist
     if (backendUrl && config && !orchestratorRef.current) {
+      console.log('[AI Search Modal] Creating orchestrator with config:', {
+        backendUrl,
+        hasConfig: !!config,
+        configBackendUrl: config?.backend?.url
+      });
       orchestratorRef.current = new SearchOrchestrator(
         config,
         (step) => setSearchStep(step)
       );
+      console.log('[AI Search Modal] Orchestrator created');
     }
     
-    // Initialization cleanup on unmount
+    // Don't cleanup orchestrator on dependency changes - only on unmount
     return () => {
-      // Ensure refs are properly reset on unmount
-      if (answerGenerationStartedRef.current !== undefined) {
-        answerGenerationStartedRef.current = false;
-      }
+      // Only cleanup on actual unmount, not on dependency changes
     };
-  }, [backendUrl, config]);
+  }, [backendUrl]); // Remove config from dependencies to prevent recreating orchestrator
   
   // P2-001: Enhanced component lifecycle management with ref monitoring
   useEffect(() => {
@@ -442,11 +477,16 @@ export function AISearchModal({
       // Clear state on unmount with enhanced safety
       try {
         cleanupComponent();
+        // Also ensure orchestrator is cleaned up on unmount
+        if (orchestratorRef.current) {
+          orchestratorRef.current.cancelAllOperations();
+          orchestratorRef.current = null;
+        }
       } catch (error) {
         console.error('[AI Search Modal] Error during component cleanup:', error);
       }
     };
-  }, [registerCleanup, cleanupComponent]);
+  }, []); // Empty dependency array - only run once on mount
   
   // P2-001: Monitor ref state changes for debugging and safety
   useEffect(() => {
@@ -465,36 +505,6 @@ export function AISearchModal({
     }
   }, [config?.enableLogging]);
 
-  // Stage 2: Check if multi-source search is enabled in config
-  useEffect(() => {
-    if (config?.features?.multiSource) {
-      setIsMultiSourceEnabled(true);
-      
-      // Extract multi-source configuration
-      const msConfig: any = {};
-      if (config.features.multiSource.github?.repo) {
-        msConfig.github = {
-          repository: config.features.multiSource.github.repo
-        };
-      }
-      if (config.features.multiSource.blog?.url) {
-        msConfig.blog = { url: config.features.multiSource.blog.url };
-      }
-      if (config.features.multiSource.changelog?.url) {
-        msConfig.changelog = { url: config.features.multiSource.changelog.url };
-      }
-      
-      setMultiSourceConfig(msConfig);
-    }
-  }, [config?.features?.multiSource]);
-
-  // Week 6: Check if conversational memory is enabled
-  useEffect(() => {
-    if (config?.features?.conversationalMemory?.enabled) {
-      setIsConversationalMemoryEnabled(true);
-    }
-  }, [config?.features?.conversationalMemory]);
-
   // Week 6: Get session ID from orchestrator when it's ready
   useEffect(() => {
     if (orchestratorRef.current && isConversationalMemoryEnabled) {
@@ -503,7 +513,7 @@ export function AISearchModal({
         setSessionId(sessionId);
       }
     }
-  }, [orchestratorRef.current, isConversationalMemoryEnabled]);
+  }, [isConversationalMemoryEnabled]);
 
   // Week 6: Load conversation history when session is available
   useEffect(() => {
@@ -519,11 +529,25 @@ export function AISearchModal({
   }, [sessionId, isConversationalMemoryEnabled]);
 
   // Stage 2 & Week 6: Enhanced fetchContent function with multi-source and conversational support
+  const previousQueryRef = useRef<string>('');
+  
   useEffect(() => {
     const errorHandler = createErrorHandler('AISearchModal-fetchContent');
     let isCancelled = false; // P3-002: Race condition protection
     
+    // Check if query actually changed
+    const queryChanged = previousQueryRef.current !== query;
+    previousQueryRef.current = query;
+    
     async function fetchContent() {
+      // console.log('[AI Search Modal] fetchContent called', {
+      //   query,
+      //   hasAnswer: !!answer,
+      //   retrievedContentLength: retrievedContent.length,
+      //   loading,
+      //   isRetrying
+      // });
+      
       if (!query) {
         setLoading(false);
         return;
@@ -531,16 +555,20 @@ export function AISearchModal({
 
       // Skip if we're retrying
       if (isRetrying) {
+        // console.log('[AI Search Modal] Skipping - isRetrying is true');
         return;
       }
 
       // Skip if we already have content and an answer
       if (retrievedContent.length > 0 && answer) {
+        // console.log('[AI Search Modal] Skipping - already have content and answer');
+        setLoading(false);
         return;
       }
 
       // P3-002: Check if this effect instance was cancelled
       if (isCancelled) {
+        // console.log('[AI Search Modal] Skipping - isCancelled is true');
         return;
       }
 
@@ -577,11 +605,25 @@ export function AISearchModal({
         }
 
         // Use AI search with the new orchestrator
+        // console.log('[AI Search Modal] Checking orchestrator:', {
+        //   hasOrchestratorRef: !!orchestratorRef,
+        //   hasOrchestratorCurrent: !!orchestratorRef.current,
+        //   hasAlgoliaConfig: !!algoliaConfig,
+        //   algoliaConfigKeys: algoliaConfig ? Object.keys(algoliaConfig) : []
+        // });
+        
         if (orchestratorRef.current && algoliaConfig) {
+          // console.log('[AI Search Modal] Using orchestrator search', {
+          //   isConversationalMemoryEnabled,
+          //   isMultiSourceEnabled,
+          //   hasMultiSourceConfig: !!multiSourceConfig
+          // });
+          
           let result: any;
           
           // Week 6: Use conversational search if enabled
           if (isConversationalMemoryEnabled) {
+            // console.log('[AI Search Modal] Using conversational search');
             result = await orchestratorRef.current.performConversationalAISearch(
               query,
               algoliaConfig.searchClient,
@@ -615,6 +657,7 @@ export function AISearchModal({
           }
           // Stage 2: Use multi-source search if enabled and conversational is not
           else if (isMultiSourceEnabled && multiSourceConfig) {
+            // console.log('[AI Search Modal] Using multi-source search');
             result = await orchestratorRef.current.performMultiSourceAISearch(
               query,
               algoliaConfig.searchClient,
@@ -644,19 +687,31 @@ export function AISearchModal({
             }
           } else {
             // Use traditional single-source search
-            result = await orchestratorRef.current.performAISearch(
-              query,
-              algoliaConfig.searchClient,
-              algoliaConfig.indexName
-            );
+            // console.log('[AI Search Modal] Using traditional single-source search');
+            try {
+              // console.log('[AI Search Modal] Calling performAISearch...');
+              result = await orchestratorRef.current.performAISearch(
+                query,
+                algoliaConfig.searchClient,
+                algoliaConfig.indexName
+              );
+              // console.log('[AI Search Modal] performAISearch returned:', result);
+            } catch (orchestratorError) {
+              console.error('[AI Search Modal] performAISearch error:', orchestratorError);
+              throw orchestratorError;
+            }
 
             // P3-002: Check for race condition after async operation
-            if (isCancelled) return;
+            if (isCancelled) {
+              // console.log('[AI Search Modal] Aborted after performAISearch - isCancelled is true');
+              return;
+            }
 
             if (result.documents.length === 0) {
               throw new Error(modalTexts.noDocumentsFoundError);
             }
 
+            // console.log('[AI Search Modal] Setting state after performAISearch');
             setRetrievedContent(result.documents);
             setAnswer(result.answer);
             
@@ -676,21 +731,40 @@ export function AISearchModal({
             }
           }
           
-          // Cache the complete response if caching is enabled
-          if (enableCaching) {
-            cache.set(query, result.answer, '', result.documents || result.sources);
+          // console.log('[AI Search Modal] Search completed, result:', { 
+          //   hasAnswer: !!result?.answer, 
+          //   answerLength: result?.answer?.length,
+          //   documentsCount: result?.documents?.length || result?.sources?.length 
+          // });
+          
+          if (!result || !result.answer) {
+            console.error('[AI Search Modal] Invalid result from orchestrator:', result);
+            throw new Error('Search completed but no answer was returned');
           }
           
-          // Track successful AI query
-          if (config?.onAIQuery) {
-            config.onAIQuery(query, true);
+          try {
+            // Cache the complete response if caching is enabled
+            if (enableCaching) {
+              cache.set(query, result.answer, '', result.documents || result.sources);
+            }
+            
+            // Track successful AI query
+            if (config?.onAIQuery) {
+              config.onAIQuery(query, true);
+            }
+            
+            // console.log('[AI Search Modal] About to set loading to false');
+            setLoading(false);
+            // console.log('[AI Search Modal] Loading set to false');
+          } catch (err) {
+            console.error('[AI Search Modal] Error in post-search processing:', err);
+            setLoading(false); // Ensure loading is set to false even if there's an error
+            throw err; // Re-throw to be caught by outer error handler
           }
-          
-          setLoading(false);
         } else {
           // Fallback to original search behavior
           if (searchResults.length === 0) {
-            throw new Error(modalTexts.noSearchResultsError);
+            throw new Error(modalTexts.noDocumentsFoundError);
           }
 
           setSearchStep({
@@ -771,13 +845,17 @@ export function AISearchModal({
     
     // P3-002: Cleanup function to prevent race conditions
     return () => {
-      isCancelled = true;
-      // Cancel orchestrator operations if they're running
-      if (orchestratorRef.current && typeof orchestratorRef.current.cancelAllOperations === 'function') {
-        orchestratorRef.current.cancelAllOperations();
+      // Only cancel if query is changing
+      if (queryChanged) {
+        // console.log('[AI Search Modal] fetchContent cleanup - query changed, setting isCancelled to true');
+        isCancelled = true;
+        // Cancel orchestrator operations if they're running
+        if (orchestratorRef.current && typeof orchestratorRef.current.cancelAllOperations === 'function') {
+          orchestratorRef.current.cancelAllOperations();
+        }
       }
     };
-  }, [query, searchResults.length, algoliaConfig?.indexName, isMultiSourceEnabled, multiSourceConfig, isConversationalMemoryEnabled]);
+  }, [query, searchResults.length, algoliaConfig?.indexName]); // Remove config-based dependencies that can change
 
   // P3-001: Enhanced markdown response handling with error protection
   useEffect(() => {
@@ -810,7 +888,7 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
         setFormattedAnswer(answer);
       }
     }
-  }, [answer, config, retrievedContent, createErrorHandler]);
+  }, [answer, modalTexts.sourcesHeaderText, retrievedContent, createErrorHandler]);
 
   // P3-001: Enhanced DOM manipulation with error protection
   useEffect(() => {
@@ -1035,6 +1113,13 @@ ${retrievedContent.slice(0, 5).map((doc, idx) =>
       </>
     );
   };
+
+  // console.log('[AI Search Modal] Rendering with state:', {
+  //   loading,
+  //   hasError: !!error,
+  //   hasAnswer: !!answer,
+  //   formattedAnswerLength: formattedAnswer.length
+  // });
 
   return (
     <div
