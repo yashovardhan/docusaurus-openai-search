@@ -1,6 +1,6 @@
 {
     "name": "docusaurus-openai-search",
-    "version": "5.1.0",
+    "version": "5.1.1",
     "description": "AI-powered search plugin for Docusaurus - extends Algolia search with intelligent keyword generation and RAG-based answers",
     "main": "./dist/index.js",
     "types": "dist/index.d.ts",

@@ -382,6 +382,16 @@ export const DocusaurusAISearch = React.memo(function DocusaurusAISearch({
         // Handle all other events
         ['keydown', 'keyup', 'keypress', 'focus', 'blur', 'paste', 'cut'].forEach(eventType => {
           customInput.addEventListener(eventType, (e) => {
+            // Don't forward Enter key on keydown if there are search results and AI is enabled
+            if (eventType === 'keydown' && 
+                (e as KeyboardEvent).key === 'Enter' && 
+                customInput.value.trim().length > 0 &&
+                document.querySelector('.DocSearch-Hit') &&
+                aiConfig?.enabled !== false) {
+              // Let our handleKeyDown function handle this
+              return;
+            }
+            
             // Forward the event to the original input
             const clonedEvent = new (e.constructor as any)(eventType, {
               bubbles: e.bubbles,
